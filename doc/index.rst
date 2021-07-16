@@ -7,8 +7,8 @@ Welcome to Primertool's documentation!
 ======================================
 
 .. toctree::
-   introduction
-   primers
+   1_introduction
+   2_primers
    :maxdepth: 4	
 
 
