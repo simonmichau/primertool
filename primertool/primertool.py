@@ -87,6 +87,8 @@ class Primertool(object):
             f'FROM refGene WHERE name="{nm_number}"'
         query_results = functions.query_database(self.ucsc_config, query)
 
+        print(type(query_results[0]))
+
         if len(query_results) > 1:
             for entry in query_results:
                 if len(entry[0]) < 6:
@@ -352,6 +354,14 @@ class PrimerGenomicPosition(Primertool):
         functions.write_output_file(outfile, primer_strings)
 
     def create_primer(self, write_file=True):
+        """
+
+        Args:
+            write_file:
+
+        Returns:
+
+        """
         # 1. Check if genome build is available
         self.check_genome()
 

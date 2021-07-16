@@ -6,7 +6,6 @@ import hgvs.dataproviders.uta
 import hgvs.exceptions
 import logging
 import zeep
-import math
 import mysql.connector
 from mysql.connector import errorcode
 
@@ -14,10 +13,18 @@ from primertool.exceptions import PrimertoolInputError, PrimertoolHGVSError, Pri
 
 
 def query_database(config, query):
-    # INFO: Query a SQL database using a config and specific query
-    #   Using dict for connection
-    #   (https://dev.mysql.com/doc/connector-python/en/connector-python-example-connecting.html)
+    """ Query a SQL database using a config and specific query
 
+    Using mysql.connector with a dict as config, see
+    https://dev.mysql.com/doc/connector-python/en/connector-python-example-connecting.html
+
+    Args:
+        config: dict with user/password/host&database
+        query: str
+
+    Returns: list
+
+    """
     try:
         cnx = mysql.connector.connect(**config)
     except mysql.connector.Error as err:
@@ -39,62 +46,107 @@ def query_database(config, query):
 
 
 def parse_mutation(mutation):
-    # INFO: parse mutation to hgvs.parser, returns tree object with ac, posedit, type etc
-    # logging.info('Parsing the given mutation into hgvs')
+    """ Parse mutation with hgvs parser.
+
+    Genenames in brackets are removed from the variant (eg: eg: NM_003165.6(STXBP1):c.1702G>A).
+    The mutation is then parsed using hgvs.parser and a hgvs tree object (see  https://hgvs.readthedocs.io/en/stable/key_concepts.html#variant-object-representation)
+    is returned.
+    Parses coding and genomic variants.
+
+    Args:
+        mutation: str
+
+    Returns: hgvs.parser tree object
+
+    """
     mutation = re.sub(r'\([^)]*\)', '', mutation)
+
     try:
         hp = hgvs.parser.Parser()
         hgvs_mutation = hp.parse_hgvs_variant(mutation)
     except hgvs.exceptions.HGVSParseError as msg:
         raise PrimertoolInputError('Could not parse the input. There is a problem with the hgvs nomenclature: '
                                    '{0}'.format(msg))
-
     return hgvs_mutation
 
 
 def convert_variant_notation(mutation, reference, url):
-    # INFO: takes hgvs.parser object, converts to genomic reference based on in put reference genome
-    # TODO: Converting to genomic ref
-    #  1: Does mutation.ac have a version number? -> how to somehow find the 'newest' version number
-    # logging.info('Coverting the given mutation into a genomic position')
+    """ Convert variant from coding to genomic position.
+
+    Using the mutalyzer api the variant is coverted from coding to genomic based on the given reference genome.
+    Mutalyzer does not always know the newest transcript version number, therefore the version number is decreased
+    until a conversion can be achieved. The converted variant is then parsed with the hgvs parser again to return a
+    hgvs tree object.
+
+    Args:
+        mutation: hgvs parser object
+        reference: str (hg38/hg19)
+        url: str (mutalyzer api url)
+
+    Returns: hgvs.parser tree object
+
+    """
     client = zeep.Client(url)
     var_g = client.service.numberConversion(reference, mutation)
 
     if not var_g[0]:
-        # logging.info('First conversion did not work, trying with lower version number')
         nm, version = split_nm(str(mutation.ac))
         if version != 1:
             version = int(version) - 1
             new_nm = nm + '.' + str(version)
             mutation.ac = new_nm
-            # logging.info(f'running again with {new_nm}')
             genomic = convert_variant_notation(mutation, reference, url)
         else:
-            # logging.info('Mutation could not be converted into a genomic position')
             raise PrimertoolInputError('Mutation could not be converted into a genomic position')
     else:
         genomic = parse_mutation(var_g[0])
         logging.info('The genomic position of {0} is: {1}'.format(mutation, genomic))
+
     return genomic
 
 
 def split_nm(nm_number):
-    # INFO: split mutation.ac into nm_number and version number.
-    #    if no version number in string, set as 0?
+    """ Split variant.ac from hgvs object into transcript and version number
 
+    If the transcript number includes a version number, split at '.'. If not, set the version number to 1.
+
+    Args:
+        nm_number: str
+
+    Returns: tuple
+
+    """
     nm_split = nm_number.split('.')
-    number = nm_split[0]
+    transcript = nm_split[0]
 
     if len(nm_split) == 1:
         version = 1
     else:
         version = int(nm_split[1])
 
-    return number, version
+    return transcript, version
 
 
 def find_sequence_positions(exon_starts, exon_ends, exon_count, strand, mutation_position):
-    # INFO: check if position of mutation in an exon
+    """ Establish if variant position is in an exon.
+
+    The hgvs.parser object has the start and end position of the variant (in case of an indel rather than a snp). Using
+    these positions and the lists of exon starts and ends, determine if the variant is located in an exon.
+
+    The information is returned as a dictionary. If the gene is based on the - strand, the exon number needs to be
+    inverted.
+
+    Args:
+        exon_starts: list
+        exon_ends: list
+        exon_count: int
+        strand: str
+        mutation_position: hgvs.location.interval
+
+    Returns: dict
+
+    """
+
     mut_start = int(str(mutation_position.start))
     mut_end = int(str(mutation_position.end))
     exon_number = 0
@@ -118,11 +170,22 @@ def find_sequence_positions(exon_starts, exon_ends, exon_count, strand, mutation
                 exon_len=exon_len)
 
 
-def calculate_targets(start, end, primer_bases):
-    # 1. Add bases to exon borders
-    target_start = start
-    target_end = end
-    # 2. Define sequence start and end (area in which primers will be generated)
+def calculate_targets(target_start, target_end, primer_bases):
+    """ Defining the sequence start and end positions
+
+    Primer bases are the number of bases to each side of the target sequence in which primer3 looks for a possible
+    primer. These are added to sequence start and end respectively to calculate the sequence start and end. The size
+    range is a list with the length of teh target sequence and
+
+
+    Args:
+        target_start: int
+        target_end: int
+        primer_bases: int
+
+    Returns: dict
+
+    """
     seq_start = target_start - primer_bases
     seq_end = target_end + primer_bases
 
@@ -141,6 +204,17 @@ def calculate_targets(start, end, primer_bases):
 
 
 def get_snps(chromosome, seq_start, seq_end, uscsc_config):
+    """Retrieve common SNPs from the UCSC database.
+
+    Args:
+        chromosome: str
+        seq_start: int
+        seq_end: int
+        uscsc_config: dict
+
+    Returns: list
+
+    """
     snpquery = f"SELECT chromStart FROM snp150Common WHERE chrom='{chromosome}' AND class='single' AND chromEnd BETWEEN'{seq_start}'AND'{seq_end}'"
     snp = query_database(uscsc_config, snpquery)
     if snp is None:
@@ -153,6 +227,21 @@ def get_snps(chromosome, seq_start, seq_end, uscsc_config):
 
 
 def mask_snps(genome, chromosome, seq_start, seq_end, ucsc_config):
+    """ Mask common SNP positions with an N in the sequence.
+
+    Retrieve common SNPs in the given sequence from UCSC. Extract the genomic sequence between the given positions via
+    genomepy. Replaces the bases at common SNP positions with an N.
+
+    Args:
+        genome: genomepy object
+        chromosome: str
+        seq_start: int
+        seq_end: int
+        ucsc_config: dict
+
+    Returns: list
+
+    """
     snps = get_snps(chromosome, seq_start, seq_end, ucsc_config)
     sequence = str(genome[chromosome][seq_start:seq_end]).upper()
     if snps is None:
@@ -167,8 +256,19 @@ def mask_snps(genome, chromosome, seq_start, seq_end, ucsc_config):
 
 
 def primer_output_exon(genname, nm_number, primer, strand, exon_number, index):
-    # INFO: write generated primers to file
-    #   switch forward/reverse based on strand information
+    """ Create output string for genomic position primers.
+
+    Args:
+        genname: str
+        nm_number: str
+        primer:
+        strand:
+        exon_number:
+        index:
+
+    Returns:
+
+    """
     header = f'{genname}, Exon: {exon_number}, Primerpaar: {index}\n'
     header_2 = """{0:7}\t{1:<5}\t{2:<6}\t{3:4}\t{4:4}\t{5:35}""".format('', 'Start', 'Length', 'Tm', 'GC%', 'Sequence')
     exon_str = str(exon_number).zfill(2)
@@ -207,9 +307,24 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 
 
 def primer_output_posedit(genname, nm_number, primer, strand, posedit, index):
-    # INFO: write generated primers to file
-    #   switch forward/reverse based on strand information
-    header = f'{genname}, POsition: {posedit}, Primerpaar: {index}\n'
+    """ Create output string for genomic position primers.
+
+    Flips forward and reverse primer based on strand orientation of the gene.
+
+    Args:
+        genname: str
+        nm_number: str
+        primer: dict, primer3 output
+        strand: str
+        posedit:
+        index:
+
+    Returns: str
+
+    """
+    print(type(posedit))
+    print(posedit)
+    header = f'{genname}, Position: {posedit}, Primerpaar: {index}\n'
     header_2 = """{0:7}\t{1:<5}\t{2:<6}\t{3:4}\t{4:4}\t{5:35}""".format('', 'Start', 'Length', 'Tm', 'GC%', 'Sequence')
     exon_str = str(posedit).zfill(2)
     temp = (primer['PRIMER_RIGHT_0_TM'] + primer['PRIMER_LEFT_0_TM']) / 2
@@ -247,10 +362,18 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 
 
 def primer_output_genomic(primer, chromosome, start, end, index):
-    # INFO: write generated primers to file
-    #   switch forward/reverse based on strand information
-    # TODO: is this simplifiable? how to handle strand orientation?
-    #  Do we need this, if this is put into a database?
+    """ Create output string for genomic position primers.
+
+    Args:
+        primer: dict, primer3 output
+        chromosome: str
+        start: int
+        end: int
+        index: int
+
+    Returns: str
+
+    """
 
     header = f'Chromosome: {chromosome}, Start: {start}, Ende: {end}, Primerpaar: {index}\n'
     header_2 = """{0:7}\t{1:<5}\t{2:<6}\t{3:4}\t{4:4}\t{5:35}""".format('', 'Start', 'Length', 'Tm', 'GC%', 'Sequence')
@@ -274,7 +397,13 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 
 
 def write_output_file(outfile, primer_strings):
-    print(primer_strings)
+    """ Write primer pairs to outfile.
+
+    Args:
+        outfile: str
+        primer_strings: str
+
+    """
     with open(outfile, 'w') as f:
         for item in primer_strings:
             for x in item:
