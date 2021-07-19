@@ -1,0 +1,9 @@
+pages:
+  script:
+  - sphinx-build -d doc/_build/doctrees/ doc/ doc/_build/html/
+  - mv doc/_build/html/ public/
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
