@@ -1,0 +1,239 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Generating Primers &mdash; Primertool 0.1 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Primertool 0.1 documentation" href="index.html"/>
+        <link rel="prev" title="Primertool" href="1_introduction.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Primertool
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="1_introduction.html">Primertool</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Generating Primers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#general-requirements-for-primers">General requirements for primers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#primermutation">PrimerMutation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#primergenomic">PrimerGenomic</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Primertool</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Generating Primers</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/2_primers.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="generating-primers">
+<h1>Generating Primers<a class="headerlink" href="#generating-primers" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="general-requirements-for-primers">
+<h2>General requirements for primers<a class="headerlink" href="#general-requirements-for-primers" title="Permalink to this headline">¶</a></h2>
+<p>Since the primers are used for sanger sequencing, these settings are important to create usable primers:</p>
+<ul class="simple">
+<li>maximum insert size for a primer: 700 bp</li>
+<li>minimum insert size for a primer: 200 bp</li>
+<li>distance of primers from exon borders: 40 bp</li>
+</ul>
+<p>These are settings used for primer3:</p>
+<ul class="simple">
+<li>optimal primer size: 20 bp</li>
+<li>minimum primer size: 20 bp</li>
+<li>maximum primer size: 22 bp</li>
+<li>optimal temperature: 60°C</li>
+<li>minimum temperature: 58°C</li>
+<li>maximum temperature: 62°C</li>
+<li>maximum poly x (maximum allowable length of a mononucleotide repeat): 5</li>
+<li>gcc clamp (Require the specified number of consecutive Gs and Cs at the 3&#8217; end of both the left and right primer): 1</li>
+</ul>
+</div>
+<div class="section" id="primermutation">
+<h2>PrimerMutation<a class="headerlink" href="#primermutation" title="Permalink to this headline">¶</a></h2>
+<p>A variant in HGVS nomenclature is used to generate primers for the specific position. If the variant is located in an exon, primers are generated for the whole exon.</p>
+<ol class="arabic simple">
+<li>Check if given reference genome is downloaded and if not, download the specific file.</li>
+<li>Check the given mutation with mutalyzer and convert from coding into the genomic position.</li>
+<li>Extract transcript number (NM) and transcript specific information from the NCBI Refseq database.</li>
+</ol>
+</div>
+<div class="section" id="primergenomic">
+<h2>PrimerGenomic<a class="headerlink" href="#primergenomic" title="Permalink to this headline">¶</a></h2>
+<p>This is the easiest version to generate primers, since it only requires a start and end position, chromosome and the name of the reference genome.</p>
+<ol class="arabic simple">
+<li>Check if given reference genome is downloaded and if not, download the specific file.</li>
+<li>Are start and stop position in the min/max insert size.</li>
+</ol>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="1_introduction.html" class="btn btn-neutral" title="Primertool" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2021, Daniela Dey, Carlos Classen.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -13,7 +13,7 @@ from primertool.exceptions import PrimertoolInputError, PrimertoolHGVSError, Pri
 
 
 def query_database(config, query):
-    """ Query a SQL database using a config and specific query
+    """ Query a SQL database using a config and specific query.
 
     Using mysql.connector with a dict as config, see
     https://dev.mysql.com/doc/connector-python/en/connector-python-example-connecting.html
@@ -171,11 +171,12 @@ def find_sequence_positions(exon_starts, exon_ends, exon_count, strand, mutation
 
 
 def calculate_targets(target_start, target_end, primer_bases):
-    """ Defining the sequence start and end positions
+    """ Defining the sequence start and end positions.
 
     Primer bases are the number of bases to each side of the target sequence in which primer3 looks for a possible
-    primer. These are added to sequence start and end respectively to calculate the sequence start and end. The size
-    range is a list with the length of teh target sequence and
+    primer. These are added to sequence start and end respectively to calculate the sequence start and end positions.
+    The size range is a list with the length of the target sequence and target sequence with the primer bases added.
+    Primer3 should design primers in this size range.
 
 
     Args:
@@ -191,7 +192,7 @@ def calculate_targets(target_start, target_end, primer_bases):
 
     target_base = target_start - seq_start
     target_length = target_end - target_start
-    size_range = [target_length, int(target_length + primer_bases / 2)]
+    size_range = [target_length, ]
     target_info = dict(target_start=target_start,
                        target_end=target_end,
                        seq_start=seq_start,
@@ -205,6 +206,9 @@ def calculate_targets(target_start, target_end, primer_bases):
 
 def get_snps(chromosome, seq_start, seq_end, uscsc_config):
     """Retrieve common SNPs from the UCSC database.
+
+    Query the UCSC database with the chromosome and position data to find common snps in the sequence, which need to
+    be masked. Snps are returned as list.
 
     Args:
         chromosome: str
@@ -229,8 +233,8 @@ def get_snps(chromosome, seq_start, seq_end, uscsc_config):
 def mask_snps(genome, chromosome, seq_start, seq_end, ucsc_config):
     """ Mask common SNP positions with an N in the sequence.
 
-    Retrieve common SNPs in the given sequence from UCSC. Extract the genomic sequence between the given positions via
-    genomepy. Replaces the bases at common SNP positions with an N.
+    Using the get_snps() function to retrieve common SNPs in the given sequence from UCSC. Extract the genomic sequence
+    between the given positions via genomepy and replace the bases at common SNP positions with an N.
 
     Args:
         genome: genomepy object
@@ -258,15 +262,17 @@ def mask_snps(genome, chromosome, seq_start, seq_end, ucsc_config):
 def primer_output_exon(genname, nm_number, primer, strand, exon_number, index):
     """ Create output string for genomic position primers.
 
+    Flips forward and reverse primer based on strand orientation of the gene.
+
     Args:
         genname: str
         nm_number: str
-        primer:
-        strand:
-        exon_number:
-        index:
+        primer: dict, primer3 output
+        strand: str
+        exon_number: int
+        index: int
 
-    Returns:
+    Returns: list
 
     """
     header = f'{genname}, Exon: {exon_number}, Primerpaar: {index}\n'
@@ -316,14 +322,12 @@ def primer_output_posedit(genname, nm_number, primer, strand, posedit, index):
         nm_number: str
         primer: dict, primer3 output
         strand: str
-        posedit:
-        index:
+        posedit: int
+        index: int
 
-    Returns: str
+    Returns: list
 
     """
-    print(type(posedit))
-    print(posedit)
     header = f'{genname}, Position: {posedit}, Primerpaar: {index}\n'
     header_2 = """{0:7}\t{1:<5}\t{2:<6}\t{3:4}\t{4:4}\t{5:35}""".format('', 'Start', 'Length', 'Tm', 'GC%', 'Sequence')
     exon_str = str(posedit).zfill(2)
@@ -371,7 +375,7 @@ def primer_output_genomic(primer, chromosome, start, end, index):
         end: int
         index: int
 
-    Returns: str
+    Returns: list
 
     """
 
@@ -401,7 +405,7 @@ def write_output_file(outfile, primer_strings):
 
     Args:
         outfile: str
-        primer_strings: str
+        primer_strings: list of strings
 
     """
     with open(outfile, 'w') as f:

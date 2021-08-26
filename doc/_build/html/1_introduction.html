@@ -1,0 +1,256 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Primertool &mdash; Primertool 0.1 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Primertool 0.1 documentation" href="index.html"/>
+        <link rel="next" title="Generating Primers" href="2_primers.html"/>
+        <link rel="prev" title="Welcome to Primertool’s documentation!" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Primertool
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="">Primertool</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#basic-usage-examples">Basic usage examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="2_primers.html">Generating Primers</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Primertool</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Primertool</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/1_introduction.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="primertool">
+<h1>Primertool<a class="headerlink" href="#primertool" title="Permalink to this headline">¶</a></h1>
+<p>The premise of this package is to generate primers for PCR/Sanger sequencing for either:</p>
+<ul class="simple">
+<li>a specific variant (<a class="reference external" href="https://varnomen.hgvs.org/">hgvs</a> variant nomenclature), either the whole exon or if not in an exon for the genomic position</li>
+<li>an exon (transcript number and exon )</li>
+<li>all exons of a transcript (transcript number)</li>
+<li>around a genomic position (chromosome and start/stop position)</li>
+</ul>
+<p>This tool allows for primers based in hg19 or hg38.</p>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>The Primertool requires Python 3.6+. All required packages are listed in the requirements file.</p>
+<p>Local installation is possible by running
+.. code:: bash</p>
+<blockquote>
+<div>pip install .</div></blockquote>
+<p>in the main directory.</p>
+</div>
+<div class="section" id="basic-usage-examples">
+<h2>Basic usage examples<a class="headerlink" href="#basic-usage-examples" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li>Generating primers for a mutation using PrimerMutation:</li>
+</ol>
+<div class="code Python highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">primertool</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">primertool</span><span class="o">.</span><span class="n">PrimerMutation</span><span class="p">(</span><span class="s1">&#39;NM_003165.6:c.1702G&gt;A&#39;</span><span class="p">,</span> <span class="s1">&#39;hg38&#39;</span><span class="p">)</span>
+<span class="n">x</span><span class="o">.</span><span class="n">create_primer</span><span class="p">()</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li>Generating primer for a single exon using PrimerExon:</li>
+</ol>
+<div class="code Python highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">primertool</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">primertool</span><span class="o">.</span><span class="n">PrimerExon</span><span class="p">(</span><span class="s1">&#39;NM_000451&#39;</span><span class="p">,</span> <span class="s1">&#39;6&#39;</span><span class="p">,</span> <span class="s1">&#39;hg38&#39;</span><span class="p">)</span>
+<span class="n">x</span><span class="o">.</span><span class="n">create_primer</span><span class="p">()</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li>Generating primers for every exon in a gene using PrimerGen:</li>
+</ol>
+<div class="code Python highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">primertool</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">primertool</span><span class="o">.</span><span class="n">PrimerGen</span><span class="p">(</span><span class="s1">&#39;NM_000451&#39;</span><span class="p">,</span> <span class="s1">&#39;hg38&#39;</span><span class="p">)</span>
+<span class="n">x</span><span class="o">.</span><span class="n">create_primer</span><span class="p">()</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="4">
+<li>Generating primer for a genomic position using PrimerGenomicPosition:</li>
+</ol>
+<div class="code Python highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">primertool</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">primertool</span><span class="o">.</span><span class="n">PrimerGenomicPosition</span><span class="p">(</span><span class="s1">&#39;chr12&#39;</span><span class="p">,</span> <span class="mi">121814175</span><span class="p">,</span> <span class="mi">121814175</span><span class="p">,</span> <span class="s1">&#39;hg38&#39;</span><span class="p">)</span>
+<span class="n">x</span><span class="o">.</span><span class="n">create_primer</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="2_primers.html" class="btn btn-neutral float-right" title="Generating Primers" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="Welcome to Primertool’s documentation!" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2021, Daniela Dey, Carlos Classen.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
