@@ -91,6 +91,7 @@ def convert_variant_notation(mutation, reference, url):
 
     if not var_g[0]:
         nm, version = split_nm(str(mutation.ac))
+        print(nm, version)
         if version != 1:
             version = int(version) - 1
             new_nm = nm + '.' + str(version)
@@ -192,7 +193,7 @@ def calculate_targets(target_start, target_end, primer_bases):
 
     target_base = target_start - seq_start
     target_length = target_end - target_start
-    size_range = [target_length, ]
+    size_range = [target_length, int(target_length + primer_bases / 2)]
     target_info = dict(target_start=target_start,
                        target_end=target_end,
                        seq_start=seq_start,

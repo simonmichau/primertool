@@ -19,9 +19,8 @@ logging.basicConfig(level=logging.INFO)
 
 class Primertool(object):
 
-    def __init__(self, reference, max_insert=700, min_insert=200, dist_exon_borders=40):
+    def __init__(self, reference, max_insert=800, min_insert=200, dist_exon_borders=40):
         """
-
 
         Args:
             reference: str (hg19/hg38)
@@ -214,7 +213,8 @@ class Primertool(object):
         seq_dict = dict(SEQUENCE_TEMPLATE=genomic_sequence, SEQUENCE_TARGET=[target_info['target_base'],
                                                                              target_info['target_length']])
         self.primer_config['PRIMER_PRODUCT_SIZE_RANGE'] = target_info['size_range']
-
+        print(target_info)
+        print(self.primer_config)
         primer_out = primer3.bindings.designPrimers(seq_dict, self.primer_config)
         return primer_out, target_info['size_range'][1]
 
@@ -245,6 +245,7 @@ class PrimerMutation(Primertool):
         syntax = client.service.runMutalyzer(self.mutation)
         summary = syntax['summary'].split(' ')
         errors = int(summary[0])
+        print(syntax)
 
         if syntax['messages'] is not None:
             errorcode = syntax['messages']['SoapMessage'][0]['errorcode']
@@ -261,7 +262,8 @@ class PrimerMutation(Primertool):
                 raise exceptions.PrimertoolInputError('The given NM number has an error and could not be found',
                                                       errorcode, errormessage)
             elif errorcode == 'ENOINTRON':
-                pass
+                raise exceptions.PrimertoolInputError('The given NM number has an error and could not be found',
+                                                      errorcode, errormessage)
             else:
                 raise exceptions.PrimertoolInputError('There was a problem with the input. ', errorcode, errormessage)
 
@@ -321,13 +323,18 @@ class PrimerMutation(Primertool):
             logging.info('Mutation in exon, running PrimerExon')
             x = PrimerExon(nm_number, mutation_position['exon_number'], self.reference)
             x.create_primer()
-        else:
-            logging.info('Mutation is not in an exon or mutation is in an exon, but the exon length is bigger '
-                         'than the max insert size')
+        elif mutation_position['is_in_exon'] and mutation_position['exon_len'] > self.max_insert:
+            logging.info('Mutation is in an exon, but the exon length is bigger than the max insert size')
             x = PrimerGenomicPosition(gene_info['chromosome'], mutation_position['mut_start'],
                                       mutation_position['mut_end'], self.reference)
             primer_output = x.create_primer(write_file=False)
             self.write_outfile(gene_info, nm_number, coding_mutation.posedit, primer_output)
+        else:
+            logging.info('Mutation is not in an exon')
+            x = PrimerGenomicPosition(gene_info['chromosome'], mutation_position['mut_start'],
+                                      mutation_position['mut_end'], self.reference)
+            primer_output = x.create_primer(write_file=False)
+            self.write_outfile(gene_info, mutation_position['mut_start'], mutation_position['mut_end'], primer_output)
 
 
 class PrimerExon(Primertool):
