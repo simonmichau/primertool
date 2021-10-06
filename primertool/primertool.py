@@ -126,7 +126,8 @@ class Primertool(object):
 
         The insert size for the primer needs to be between min and max insert size, given the sequencing method.
         If the insert size is smaller, the difference to the min insert size is added/subtracted from start/end
-        position. If the insert size is
+        position.
+        If the insert size is bigger than the max insert size, the range is split into multiple chunks,
 
 
         Args:
@@ -213,8 +214,6 @@ class Primertool(object):
         seq_dict = dict(SEQUENCE_TEMPLATE=genomic_sequence, SEQUENCE_TARGET=[target_info['target_base'],
                                                                              target_info['target_length']])
         self.primer_config['PRIMER_PRODUCT_SIZE_RANGE'] = target_info['size_range']
-        print(target_info)
-        print(self.primer_config)
         primer_out = primer3.bindings.designPrimers(seq_dict, self.primer_config)
         return primer_out, target_info['size_range'][1]
 

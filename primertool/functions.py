@@ -49,8 +49,8 @@ def parse_mutation(mutation):
     """ Parse mutation with hgvs parser.
 
     Genenames in brackets are removed from the variant (eg: eg: NM_003165.6(STXBP1):c.1702G>A).
-    The mutation is then parsed using hgvs.parser and a hgvs tree object (see  https://hgvs.readthedocs.io/en/stable/key_concepts.html#variant-object-representation)
-    is returned.
+    The mutation is then parsed using hgvs.parser and a hgvs tree object (see
+    https://hgvs.readthedocs.io/en/stable/key_concepts.html#variant-object-representation) is returned.
     Parses coding and genomic variants.
 
     Args:

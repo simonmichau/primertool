@@ -4,7 +4,8 @@ Generating Primers
 General requirements for primers
 ---------------------------------
 
-Since the primers are used for sanger sequencing, these settings are important to create usable primers:
+Since the primers are used for sanger sequencing, these settings are important to create usable primers. Of course the
+standard settings can be changed if needed.
 
 - maximum insert size for a primer: 700 bp
 - minimum insert size for a primer: 200 bp
