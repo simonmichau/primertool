@@ -9,7 +9,7 @@ The premise of this package is to generate primers for PCR/Sanger sequencing for
 - around a genomic position (chromosome and start/stop position)
 
 
-This tool allows for primers based in hg19 or hg38. 
+This tool allows for primers based the human reference genome version hg19 or hg38.
 
 
 Installation
@@ -18,8 +18,11 @@ Installation
 The Primertool requires Python 3.6+. All required packages are listed in the requirements file.
 
 Local installation is possible by running
+
 .. code:: bash
+
     pip install .
+
 in the main directory.
 
 

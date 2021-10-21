@@ -9,12 +9,5 @@ Welcome to Primertool's documentation!
 .. toctree::
    1_introduction
    2_primers
-   :maxdepth: 4	
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   3_packages
+   :maxdepth: 4

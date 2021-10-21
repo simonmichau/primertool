@@ -30,7 +30,8 @@
   
 
   
-    <link rel="top" title="Primertool 0.1 documentation" href="index.html"/> 
+    <link rel="top" title="Primertool 0.1 documentation" href="index.html"/>
+        <link rel="prev" title="Generating Primers" href="2_primers.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -75,9 +76,15 @@
           
             
             
-                <ul>
+                <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="1_introduction.html">Primertool</a></li>
 <li class="toctree-l1"><a class="reference internal" href="2_primers.html">Generating Primers</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Needed packages and their documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#primer3">Primer3</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#genomepy">genomepy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hgvs-parser">hgvs.parser</a></li>
+</ul>
+</li>
 </ul>
 
             
@@ -127,6 +134,7 @@
 <div class="section" id="primer3">
 <h2>Primer3<a class="headerlink" href="#primer3" title="Permalink to this headline">¶</a></h2>
 <p>Primer3 exists both as <a class="reference external" href="https://primer3.ut.ee/">online</a> version and as python <a class="reference external" href="https://libnano.github.io/primer3-py/index.html">package</a>. An additional <a class="reference external" href="http://htmlpreview.github.io/?https://github.com/libnano/primer3-py/master/primer3/src/libprimer3/primer3_manual.htm">manual</a>  exists, that contains explanations for all variables.</p>
+<p>This package generates primers with a given genomic sequence and a dictionary containing all needed variables.</p>
 </div>
 <div class="section" id="genomepy">
 <h2>genomepy<a class="headerlink" href="#genomepy" title="Permalink to this headline">¶</a></h2>
@@ -134,7 +142,7 @@
 </div>
 <div class="section" id="hgvs-parser">
 <h2>hgvs.parser<a class="headerlink" href="#hgvs-parser" title="Permalink to this headline">¶</a></h2>
-<p>The hgvs parser is a package to handle biological sequence variants based on the HGVS nomenclature. Here it is used to parse a variant in</p>
+<p>The <a class="reference external" href="https://hgvs.readthedocs.io/en/stable/index.html">hgvs</a> parser is a package to handle biological sequence variants based on the HGVS nomenclature. Here it is used to parse a variant in</p>
 </div>
 </div>
 
@@ -142,6 +150,13 @@
            </div>
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="2_primers.html" class="btn btn-neutral" title="Generating Primers" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>

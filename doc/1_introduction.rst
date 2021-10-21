@@ -18,8 +18,11 @@ Installation
 The Primertool requires Python 3.6+. All required packages are listed in the requirements file.
 
 Local installation is possible by running
+
 .. code:: bash
+
     pip install .
+
 in the main directory.
 
 

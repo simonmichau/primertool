@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 class Primertool(object):
 
     def __init__(self, reference, max_insert=800, min_insert=200, dist_exon_borders=40):
-        """
+        """ Includes all necessary functions for all types of input to generate primers.
 
         Args:
             reference: str (hg19/hg38)
@@ -156,13 +156,15 @@ class Primertool(object):
         return positions
 
     def iterate_positions(self, positions, chromosome):
-        """
+        """ Generate primers with the given positions.
+
+        If primer3 does not return a result, increase the sequence length in which primers can be generated.
 
         Args:
-            positions:
-            chromosome:
+            positions: list
+            chromosome: int
 
-        Returns:
+        Returns: list
 
         """
         output = []
@@ -175,15 +177,14 @@ class Primertool(object):
             while primers['PRIMER_PAIR_NUM_RETURNED'] == 0:
                 logging.info('No primers were found yet, increasing sequence size')
                 primer_bases = primer_bases + 100
-                print(primer_bases)
 
                 if target_size <= self.max_insert:
                     primers, target_size = self.design_primer(chromosome, pos_start, pos_end, primer_bases)
 
                 else:
+                    # if target_size is bigger than max_insert: split into chunks and try for primers again?
                     #new_positions = self.check_insert_size(pos_start + primer_bases, pos_end + primer_bases)
                     #primers = self.iterate_positions(new_positions, chromosome)
-                    # ToDo: split into
                     #logging.info('No primers found and target size größer max insert')
                     break
 
@@ -244,7 +245,6 @@ class PrimerMutation(Primertool):
         syntax = client.service.runMutalyzer(self.mutation)
         summary = syntax['summary'].split(' ')
         errors = int(summary[0])
-        print(syntax)
 
         if syntax['messages'] is not None:
             errorcode = syntax['messages']['SoapMessage'][0]['errorcode']
@@ -289,7 +289,7 @@ class PrimerMutation(Primertool):
             posedit:
             list_primers:
 
-        Returns:
+        Returns: str
 
         """
         outfile = '{0}/{1}_exon{2}_primer.txt'.format(self.output_dir, gene_info['name'], posedit)
@@ -371,7 +371,6 @@ class PrimerExon(Primertool):
             gene_info: list
             list_primers: list
 
-        Returns:
         """
         outfile = '{0}/{1}_exon{2}_primer.txt'.format(self.output_dir, gene_info['name'], self.exon)
         primer_strings = []
@@ -387,6 +386,10 @@ class PrimerExon(Primertool):
             - checking if genome is downloaded
             - retrieving mutation information
             - generating primers based on position of mutation in gene/exon
+
+        Args:
+            write_file: boolean
+
         """
         # 1. Check if genome build is available
         self.check_genome()
@@ -415,15 +418,32 @@ class PrimerExon(Primertool):
 class PrimerGen(Primertool):
 
     def __init__(self, nm_number, reference):
+        """ Generating primer for all exons of specific transcript.
+
+        Args:
+            nm_number: str
+            reference: str (hg19/hg38)
+        """
+
         Primertool.__init__(self, reference)
 
         self.nm_number = nm_number
 
     def write_outfile(self, gene_info, out_strings):
+        """ Write primers to file.
+
+        Args:
+            gene_info: list
+            out_strings: list
+
+        Returns:
+
+        """
         outfile = '{0}/{1}_primer.txt'.format(self.output_dir, gene_info['name'])
         functions.write_output_file(outfile, out_strings)
 
     def create_primer(self):
+        """ Create primers for all exons in a transcript."""
         # 1. Check if genome build is available
         self.check_genome()
         # 2. Get RefSeq Information about the gene
@@ -472,12 +492,10 @@ class PrimerGenomicPosition(Primertool):
         functions.write_output_file(outfile, primer_strings)
 
     def create_primer(self, write_file=True):
-        """
+        """ Create primers for a specific genomic position.
 
         Args:
-            write_file:
-
-        Returns:
+            write_file: boolean
 
         """
         # 1. Check if genome build is available

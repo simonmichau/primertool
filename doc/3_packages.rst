@@ -1,5 +1,5 @@
 Needed packages and their documentation
-======================================
+=======================================
 
 
 
@@ -7,6 +7,8 @@ Primer3
 -------
 
 Primer3 exists both as online_ version and as python package_. An additional manual_  exists, that contains explanations for all variables.
+
+This package generates primers with a given genomic sequence and a dictionary containing all needed variables.
 
 
 genomepy
@@ -18,7 +20,7 @@ genomepy_ allows easy installation and use of genomes in python. Here it is used
 hgvs.parser
 -----------
 
-The hgvs parser is a package to handle biological sequence variants based on the HGVS nomenclature. Here it is used to parse a variant in
+The hgvs_ parser is a package to handle biological sequence variants based on the HGVS nomenclature. Here it is used to parse a variant in
 
 
 .. Links
