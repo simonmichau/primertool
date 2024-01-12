@@ -6,6 +6,8 @@ import hgvs.dataproviders.uta
 import hgvs.exceptions
 import logging
 import zeep
+import requests
+import json
 import mysql.connector
 from mysql.connector import errorcode
 
@@ -70,6 +72,7 @@ def parse_mutation(mutation):
     return hgvs_mutation
 
 
+# TODO: remove; This function is not used anymore
 def convert_variant_notation(mutation, reference, url):
     """ Convert variant from coding to genomic position.
 
@@ -413,3 +416,33 @@ def write_output_file(outfile, primer_strings):
         for item in primer_strings:
             for x in item:
                 f.write(x)
+
+
+def mutalyzer_error_handler(response):
+    """ Checks for errors in the mutalyzer response and raises an exception if there is an error. """
+
+    if 'message' in response and 'custom' in response:
+        # If the entries at the top level of the response are message and custom, there is a problem with the input
+        logging.info(response['message'])
+
+        # Handle infos and errors
+        if 'infos' in response['custom']:
+            for info in response['custom']['infos']:
+                logging.info(f'{info["code"]}: {info["details"]}')  # print all infos
+        if 'errors' in response['custom']:
+            for error in response['custom']['errors']:
+                logging.error(f'{error["code"]}: {error["details"]}')  # print all errors
+
+            error_code = response['custom']['errors'][0]['code']
+            error_message = response['custom']['errors'][0]['details']
+
+            if error_code == 'EPARSE':
+                raise PrimertoolInputError('There is an error in the given mutation', error_code, error_message)
+            elif error_code == 'ERETR':
+                raise PrimertoolInputError('The given NM number has an error and could not be found', error_code,
+                                           error_message)
+            elif error_code == 'ENOINTRON':
+                raise PrimertoolInputError('The given NM number has an error and could not be found', error_code,
+                                           error_message)
+            else:
+                raise PrimertoolInputError('There was a problem with the input. ', error_code, error_message)

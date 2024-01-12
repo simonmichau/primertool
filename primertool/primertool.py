@@ -2,12 +2,13 @@
 # encoding: utf-8
 # AUTHOR: Daniela Dey (ddey@ukaachen.de)
 
-import zeep
 import genomepy
 import genomepy.exceptions
 import os
 import primer3
 import math
+import requests
+import json
 
 import primertool.functions as functions
 import primertool.exceptions as exceptions
@@ -40,7 +41,7 @@ class Primertool(object):
                                 database=self.reference,
                                 raise_on_warnings=True,
                                 )
-        self.mutalyzer_url = 'https://mutalyzer.nl/services/?wsdl'
+        self.mutalyzer_url = 'https://mutalyzer.nl/api'
         # basic primer config as dictionary
         self.primer_config = dict(PRIMER_OPT_SIZE=20,
                                   PRIMER_MIN_SIZE=20,
@@ -234,49 +235,42 @@ class PrimerMutation(Primertool):
     def check_mutation(self):
         """ Checking the given mutation using the mutalyzer api and converting into a genomic position.
 
-        Firstly running the mutalyzer name checker (runMutalyzer) to check the given mutation nomenclature whily trying
+        Firstly running the mutalyzer name checker (runMutalyzer) to check the given mutation nomenclature while trying
         to catch any possible errors. Then the mutation is parsed using the hgvs parser and converted into a genomic
         position using the mutalyzer api.
 
         Returns: hgvs parser object
 
         """
-        client = zeep.Client(self.mutalyzer_url)
-        syntax = client.service.runMutalyzer(self.mutation)
-        summary = syntax['summary'].split(' ')
-        errors = int(summary[0])
+        api_request = requests.get(f'{self.mutalyzer_url}/normalize/{self.mutation}?only_variants=false')
+        response = json.loads(api_request.text)
 
-        if syntax['messages'] is not None:
-            errorcode = syntax['messages']['SoapMessage'][0]['errorcode']
-            errormessage = syntax['messages']['SoapMessage'][0]['message']
-        else:
-            errorcode = ''
-            errormessage = ''
+        with open(f'{self.mutation}.json', 'w') as outfile:
+            json.dump(response, outfile)
 
-        if errors != 0:
-            if errorcode == 'EPARSE':
-                raise exceptions.PrimertoolInputError('There is an error in the given mutation', errorcode,
-                                                      errormessage)
-            elif errorcode == 'ERETR':
-                raise exceptions.PrimertoolInputError('The given NM number has an error and could not be found',
-                                                      errorcode, errormessage)
-            elif errorcode == 'ENOINTRON':
-                raise exceptions.PrimertoolInputError('The given NM number has an error and could not be found',
-                                                      errorcode, errormessage)
-            else:
-                raise exceptions.PrimertoolInputError('There was a problem with the input. ', errorcode, errormessage)
+        functions.mutalyzer_error_handler(response)  # Error handling for mutalyzer response
 
-        coding_mutation = functions.parse_mutation(self.mutation)
+        coding_mutation = functions.parse_mutation(self.mutation)  # TODO: fix behavior when given non-coding mutations
 
-        if errorcode == 'WNOVER':
-            logging.info(f'There was no version number given, this is the newest version: {syntax["referenceId"]}')
-            coding_mutation.ac = syntax['referenceId']
+        # This was a workaround to handle missing version numbers in the mutation input and automatically find a
+        # corrected accession number (ac). Currently, this case is handled by the mutalyzer_error_handler, which makes a
+        # logging info when it was able to infer the most recent version
+        if 'infos' in response:
+            logging.info(response['infos'][0]['details'])
+            coding_mutation.ac = response['corrected_model']['reference']['id']  # TODO: no idea if this does what it should do
 
         if coding_mutation.type is not 'c':
             logging.warning(f'The input mutation is valid but not in coding reference!')
             raise exceptions.PrimertoolInputError('Input is not in coding reference!')
 
-        genomic_mutation = functions.convert_variant_notation(coding_mutation, self.reference, self.mutalyzer_url)
+        #genomic_mutation = functions.convert_variant_notation(coding_mutation, self.reference, self.mutalyzer_url)
+        if 'equivalent_descriptions' in response:  # TODO: make sure either of these options exist for any given mutation
+            genomic_mutation = functions.parse_mutation(response['equivalent_descriptions']['g'][0]['description'])
+        elif 'chromosomal_descriptions' in response:
+            genomic_mutation = functions.parse_mutation(response['chromosomal_descriptions'][0]['g'])
+        else:
+            genomic_mutation = None
+            logging.warning(f'Could not determine genomic position for {self.mutation}')
 
         return coding_mutation, genomic_mutation
 
