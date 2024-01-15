@@ -257,7 +257,7 @@ def mask_snps(genome, chromosome, seq_start, seq_end, ucsc_config):
     else:
         snp_seq = list(sequence)
         for j in snps:
-            snp_seq[j-2] = 'N'
+            snp_seq[j - 2] = 'N'
         seq_snps = ''.join(snp_seq)
 
     return seq_snps
@@ -297,6 +297,8 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 {genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
 
 """
+        primer_forwards = f'{genname}-E{exon_str}F;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
+        primer_reverse = f'{genname}-E{exon_str}R;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
     else:
         primer_pairs = """
 
@@ -311,7 +313,10 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 {genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
 
 """
-    output = [header, header_2, primer_pairs, info]
+        primer_forwards = f'{genname}-E{exon_str}F;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
+        primer_reverse = f'{genname}-E{exon_str}R;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
+
+    output = [header, header_2, primer_pairs, info], primer_forwards, primer_reverse
 
     return output
 
@@ -350,6 +355,8 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 {genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
 
 """
+        primer_forwards = f'{genname}-{exon_str}F;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
+        primer_reverse = f'{genname}-{exon_str}R;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
     else:
         primer_pairs = """
 
@@ -364,7 +371,10 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 {genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
 
 """
-    output = [header, header_2, primer_pairs, info]
+        primer_forwards = f'{genname}-{exon_str}F;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
+        primer_reverse = f'{genname}-{exon_str}R;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
+
+    output = [header, header_2, primer_pairs, info], primer_forwards, primer_reverse
 
     return output
 
@@ -399,7 +409,10 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 {chromosome}-{start}-{end}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp;
 
 """
-    output = [header, header_2, primer_pairs, info]
+    primer_forwards = f'{chromosome}-{start}F;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
+    primer_reverse = f'{chromosome}-{end}R;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
+
+    output = [header, header_2, primer_pairs, info], primer_forwards, primer_reverse
 
     return output
 
@@ -412,10 +425,16 @@ def write_output_file(outfile, primer_strings):
         primer_strings: list of strings
 
     """
+    logging.info(f'Writing output to {outfile}')
     with open(outfile, 'w') as f:
         for item in primer_strings:
             for x in item:
                 f.write(x)
+
+        # Format primer_strings for printing
+        for item in primer_strings:
+            for x in item:
+                print(x)
 
 
 def mutalyzer_error_handler(response):
@@ -444,5 +463,7 @@ def mutalyzer_error_handler(response):
             elif error_code == 'ENOINTRON':
                 raise PrimertoolInputError('The given NM number has an error and could not be found', error_code,
                                            error_message)
+            elif error_code == 'ESYNTAXUC':
+                raise PrimertoolInputError(error_code, error_message)
             else:
                 raise PrimertoolInputError('There was a problem with the input. ', error_code, error_message)
