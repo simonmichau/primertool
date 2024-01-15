@@ -103,6 +103,9 @@ class Primertool(object):
             f'FROM refGene WHERE name="{nm_number}"'
         query_results = functions.query_database(self.ucsc_config, query)
 
+        if not query_results:
+            raise exceptions.PrimertoolInputError(f'Could not find gene information for {nm_number} in RefSeq database')
+
         if len(query_results) > 1:
             for entry in query_results:
                 if len(entry[0]) < 6:
