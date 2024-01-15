@@ -6,6 +6,8 @@ import hgvs.dataproviders.uta
 import hgvs.exceptions
 import logging
 import zeep
+import requests
+import json
 import mysql.connector
 from mysql.connector import errorcode
 
@@ -70,6 +72,7 @@ def parse_mutation(mutation):
     return hgvs_mutation
 
 
+# TODO: remove; This function is not used anymore
 def convert_variant_notation(mutation, reference, url):
     """ Convert variant from coding to genomic position.
 
@@ -254,7 +257,7 @@ def mask_snps(genome, chromosome, seq_start, seq_end, ucsc_config):
     else:
         snp_seq = list(sequence)
         for j in snps:
-            snp_seq[j-2] = 'N'
+            snp_seq[j - 2] = 'N'
         seq_snps = ''.join(snp_seq)
 
     return seq_snps
@@ -294,6 +297,8 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 {genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
 
 """
+        primer_forwards = f'{genname}-E{exon_str}F;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
+        primer_reverse = f'{genname}-E{exon_str}R;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
     else:
         primer_pairs = """
 
@@ -308,7 +313,10 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 {genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
 
 """
-    output = [header, header_2, primer_pairs, info]
+        primer_forwards = f'{genname}-E{exon_str}F;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
+        primer_reverse = f'{genname}-E{exon_str}R;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
+
+    output = [header, header_2, primer_pairs, info], primer_forwards, primer_reverse
 
     return output
 
@@ -347,6 +355,8 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 {genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
 
 """
+        primer_forwards = f'{genname}-{exon_str}F;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
+        primer_reverse = f'{genname}-{exon_str}R;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
     else:
         primer_pairs = """
 
@@ -361,7 +371,10 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 {genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
 
 """
-    output = [header, header_2, primer_pairs, info]
+        primer_forwards = f'{genname}-{exon_str}F;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
+        primer_reverse = f'{genname}-{exon_str}R;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
+
+    output = [header, header_2, primer_pairs, info], primer_forwards, primer_reverse
 
     return output
 
@@ -396,7 +409,10 @@ Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
 {chromosome}-{start}-{end}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp;
 
 """
-    output = [header, header_2, primer_pairs, info]
+    primer_forwards = f'{chromosome}-{start}F;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
+    primer_reverse = f'{chromosome}-{end}R;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
+
+    output = [header, header_2, primer_pairs, info], primer_forwards, primer_reverse
 
     return output
 
@@ -409,7 +425,45 @@ def write_output_file(outfile, primer_strings):
         primer_strings: list of strings
 
     """
+    logging.info(f'Writing output to {outfile}')
     with open(outfile, 'w') as f:
         for item in primer_strings:
             for x in item:
                 f.write(x)
+
+        # Format primer_strings for printing
+        for item in primer_strings:
+            for x in item:
+                print(x)
+
+
+def mutalyzer_error_handler(response):
+    """ Checks for errors in the mutalyzer response and raises an exception if there is an error. """
+
+    if 'message' in response and 'custom' in response:
+        # If the entries at the top level of the response are message and custom, there is a problem with the input
+        logging.info(response['message'])
+
+        # Handle infos and errors
+        if 'infos' in response['custom']:
+            for info in response['custom']['infos']:
+                logging.info(f'{info["code"]}: {info["details"]}')  # print all infos
+        if 'errors' in response['custom']:
+            for error in response['custom']['errors']:
+                logging.error(f'{error["code"]}: {error["details"]}')  # print all errors
+
+            error_code = response['custom']['errors'][0]['code']
+            error_message = response['custom']['errors'][0]['details']
+
+            if error_code == 'EPARSE':
+                raise PrimertoolInputError('There is an error in the given mutation', error_code, error_message)
+            elif error_code == 'ERETR':
+                raise PrimertoolInputError('The given NM number has an error and could not be found', error_code,
+                                           error_message)
+            elif error_code == 'ENOINTRON':
+                raise PrimertoolInputError('The given NM number has an error and could not be found', error_code,
+                                           error_message)
+            elif error_code == 'ESYNTAXUC':
+                raise PrimertoolInputError(error_code, error_message)
+            else:
+                raise PrimertoolInputError('There was a problem with the input. ', error_code, error_message)

@@ -25,7 +25,18 @@ Local installation is possible by running
 
 in the main directory.
 
+You will also need gcc installed on your system, so check if you already have it by running
 
+.. code:: bash
+
+    gcc --version
+
+If you don't have gcc installed, you can install it by running
+
+.. code:: bash
+
+    sudo apt update
+    sudo apt install build-essential
 
 Basic usage examples
 ---------------------
