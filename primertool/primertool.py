@@ -9,20 +9,20 @@ import primer3
 import math
 import requests
 import json
-import pandas as pd
-import datetime
 
 import primertool.functions as functions
 import primertool.exceptions as exceptions
+import primertool.primer as primer
 
 import logging
+
 logger = logging.getLogger('Primertool')
 logging.basicConfig(level=logging.INFO)
 
 
 class Primertool(object):
 
-    def __init__(self, reference, max_insert=800, min_insert=200, dist_exon_borders=40, **kwargs):
+    def __init__(self, reference='hg38', max_insert=800, min_insert=200, dist_exon_borders=40, **kwargs):
         """ Includes all necessary functions for all types of input to generate primers.
 
         Args:
@@ -35,11 +35,6 @@ class Primertool(object):
         self.output_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'output')
         self.genome_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'genomes')
         self.genome = None
-
-        if 'kuerzel' in kwargs:
-            self.kuerzel = kwargs['kuerzel']
-        else:
-            self.kuerzel = 'N/A'
 
         # general ucsc sql database config
         self.ucsc_config = dict(user='genome',
@@ -229,45 +224,6 @@ class Primertool(object):
         primer_out = primer3.bindings.designPrimers(seq_dict, self.primer_config)
         return primer_out, target_info['size_range'][1]
 
-    def get_ordertable(self, gene_info, list_primers, primers_forward, primers_reverse):
-        """ Create an order table for the primers.
-
-        Args:
-            gene_info: list of gene information
-            list_primers: list of primer3 results (synched with primer_forward and primer_reverse)
-            primers_forward: list of forward primers (synched with primer_reverse and list_primers)
-            primers_reverse: list of reverse primers (synched with primer_forward and list_primers)
-
-        Returns: pandas dataframe, csv file
-        """
-        df = pd.DataFrame(columns=['Datum', 'Auftraggeber', 'Primer', 'Gen', 'Transkript',
-                                   'Schmelztemperatur', 'bp'])
-
-        for primer_idx, [pf, pr] in enumerate(zip(primers_forward, primers_reverse)):
-            date = datetime.datetime.now().strftime("%d.%m.%Y")
-            primer_forward = pf
-            primer_reverse = pr
-            gene = gene_info['name']
-            transcript = gene_info['nm_number']
-            melting_temp = list_primers[primer_idx][0]['PRIMER_LEFT_0_TM']
-            bp = list_primers[primer_idx][0]['PRIMER_PAIR_0_PRODUCT_SIZE']
-
-            df = df.append({'Datum': date,
-                            'Auftraggeber': self.kuerzel,
-                            'Primer': primer_forward,
-                            'Gen': gene,
-                            'Transkript': transcript,
-                            'Schmelztemperatur': melting_temp,
-                            'bp': bp}, ignore_index=True)
-            df = df.append({'Datum': date,
-                            'Auftraggeber': self.kuerzel,
-                            'Primer': primer_reverse,
-                            'Gen': gene,
-                            'Transkript': transcript,
-                            'Schmelztemperatur': melting_temp,
-                            'bp': bp}, ignore_index=True)
-        return df
-
 
 class PrimerMutation(Primertool):
 
@@ -292,8 +248,15 @@ class PrimerMutation(Primertool):
 
         """
         api_request = requests.get(f'{self.mutalyzer_url}/normalize/{self.mutation}?only_variants=false')
-        response = json.loads(api_request.text)
 
+        # check if mutalyzer api request was successful
+        if api_request.status_code == 200:
+            response = api_request.json()
+        else:
+            raise exceptions.PrimertoolMutalyzerError(f'Could not connect to mutalyzer api. '
+                                                      f'Status code: {api_request.status_code}')
+
+        # write mutalyzer response to json file [for debugging purposes, TODO: remove]
         with open(f'{self.mutation}.json', 'w') as outfile:
             json.dump(response, outfile)
 
@@ -306,22 +269,18 @@ class PrimerMutation(Primertool):
         # logging info when it was able to infer the most recent version
         if 'infos' in response:
             logging.info(response['infos'][0]['details'])
-            coding_mutation.ac = response['corrected_model']['reference'][
-                'id']  # TODO: no idea if this does what it should do
+            coding_mutation.ac = response['corrected_model']['reference']['id']
 
         if coding_mutation.type is not 'c':
             logging.warning(f'The input mutation is valid but not in coding reference!')
             raise exceptions.PrimertoolInputError('Input is not in coding reference!')
 
-        # genomic_mutation = functions.convert_variant_notation(coding_mutation, self.reference, self.mutalyzer_url)
-        if 'equivalent_descriptions' in response:  # TODO: make sure either of these options exist for any given mutation
+        if 'equivalent_descriptions' in response:
             genomic_mutation = functions.parse_mutation(response['equivalent_descriptions']['g'][0]['description'])
         elif 'chromosomal_descriptions' in response:
             genomic_mutation = functions.parse_mutation(response['chromosomal_descriptions'][0]['g'])
         else:
-            genomic_mutation = None
-            logging.warning(f'Could not determine genomic position for {self.mutation}')
-            # TODO: raise exception here?
+            raise exceptions.PrimertoolInputError('Could not resolve genomic mutation from mutalyzer response')
 
         return coding_mutation, genomic_mutation
 
@@ -341,17 +300,17 @@ class PrimerMutation(Primertool):
         primer_strings = []
         primers_forward, primers_reverse = [], []
         for item in list_primers:
-            primer_string, primer_forward, primer_reverse = functions.primer_output_exon(gene_info['name'],
-                                                                                         nm_number, item[0],
-                                                                                         gene_info['strand'],
-                                                                                         posedit, item[3])
-            primer_strings.append(primer_string)
-            primers_forward.append(primer_forward)
-            primers_reverse.append(primer_reverse)
+            epp = primer.ExonPrimerPair(gene_info, item[0], posedit, item[3])
+            # TODO: is this correct? I dont think primer_output_exon takes the posedit as an argument. Also there is primer_output_posedit, which is not used at all
+            #primer_string, primer_forward, primer_reverse = functions.primer_output_exon(gene_info['name'],
+            #                                                                             nm_number, item[0],
+            #                                                                             gene_info['strand'],
+            #                                                                             posedit, item[3])
+            primer_strings.append(epp.output)
+            primers_forward.append(epp.primer_forwards)
+            primers_reverse.append(epp.primer_reverse)
         functions.write_output_file(outfile, primer_strings)
-        df_ordertable, csv_ordertable = self.get_ordertable(gene_info, list_primers, primers_forward, primers_reverse)
         return outfile
-
 
     def create_primer(self):
         """ Create primers for a mutation in hgvs nomenclature.
@@ -363,6 +322,8 @@ class PrimerMutation(Primertool):
         """
         # 1. check if genome is available
         self.check_genome()
+        # 1b. check if sequence identifier is for a coding transcript
+        self.check_sequence_identifier()
         # 2. check mutation with mutalyzer, get genomic position
         coding_mutation, genomic_mutation = self.check_mutation()
         nm_number, version = functions.split_nm(coding_mutation.ac)
@@ -373,20 +334,30 @@ class PrimerMutation(Primertool):
         # 3. generate primers based on mutation position in gene/exon
         if mutation_position['is_in_exon'] and mutation_position['exon_len'] <= self.max_insert:
             logging.info('Mutation in exon, running PrimerExon')
-            x = PrimerExon(nm_number, mutation_position['exon_number'], self.reference, kuerzel=self.kuerzel)
+            x = PrimerExon(nm_number, mutation_position['exon_number'], self.reference)
             primer_output = x.create_primer()
         elif mutation_position['is_in_exon'] and mutation_position['exon_len'] > self.max_insert:
             logging.info('Mutation is in an exon, but the exon length is bigger than the max insert size')
             x = PrimerGenomicPosition(gene_info['chromosome'], mutation_position['mut_start'],
-                                      mutation_position['mut_end'], self.reference, kuerzel=self.kuerzel)
+                                      mutation_position['mut_end'], self.reference)
             primer_output = x.create_primer(write_file=False)
             self.write_outfile(gene_info, nm_number, coding_mutation.posedit, primer_output)
         else:
             logging.info('Mutation is not in an exon')
             x = PrimerGenomicPosition(gene_info['chromosome'], mutation_position['mut_start'],
-                                      mutation_position['mut_end'], self.reference, kuerzel=self.kuerzel)
+                                      mutation_position['mut_end'], self.reference)
             primer_output = x.create_primer(write_file=False)
             self.write_outfile(gene_info, mutation_position['mut_start'], mutation_position['mut_end'], primer_output)
+
+        return primer_output
+
+    def check_sequence_identifier(self):
+        # check if sequence identifier is for a RefSeq coding transcript (denoted by NM_)
+        if not self.mutation.startswith('NM_'):
+            raise exceptions.PrimertoolInputError(f'Given input "{self.mutation}" is not a RefSeq coding transcript! '
+                                                  f'Make sure to provide an NM_ identifier.')
+        else:
+            logging.info(f'Valid Sequence Identifier in {self.mutation}')
 
 
 class PrimerExon(Primertool):
@@ -426,18 +397,22 @@ class PrimerExon(Primertool):
 
         """
         outfile = '{0}/{1}_exon{2}_primer.txt'.format(self.output_dir, gene_info['name'], self.exon)
-        primer_strings = []
-        primers_forward, primers_reverse = [], []
+        epp_list = []
         for item in list_primers:
-            primer_string, primer_forward, primer_reverse = functions.primer_output_exon(gene_info['name'],
-                                                                                         self.nm_number, item[0],
-                                                                                         gene_info['strand'],
-                                                                                         self.exon, item[3])
-            primer_strings.append(primer_string)
-            primers_forward.append(primer_forward)
-            primers_reverse.append(primer_reverse)
-        functions.write_output_file(outfile, primer_strings)
-        df_ordertable, csv_ordertable = self.get_ordertable(gene_info, list_primers, primers_forward, primers_reverse)
+            epp = primer.ExonPrimerPair(gene_info, item[0], self.exon, item[3])
+            epp_list.append(epp)
+
+        primer_list = [pp.output for pp in epp_list]
+
+        primer_list = []
+        for pp in epp_list:
+            primer_list.append(pp.output)
+
+        functions.write_output_file(outfile, primer_list)
+
+        # Ordertable
+        ordertable = epp_list[0].get_ordertable()
+        print(ordertable)
         return outfile
 
     def create_primer(self, write_file=True):
@@ -500,7 +475,7 @@ class PrimerGen(Primertool):
         Returns:
 
         """
-        outfile = '{0}/{1}_primer.txt'.format(self.output_dir, gene_info['name'])
+        outfile = f'{self.output_dir}/{gene_info["name"]}_primer.txt'
         functions.write_output_file(outfile, out_strings)
         return outfile
 
@@ -514,11 +489,13 @@ class PrimerGen(Primertool):
         out_strings = []
         for exon in range(0, gene_info['exoncount']):
             logging.info(f'Creating primers for exon {exon + 1}')
-            x = PrimerExon(self.nm_number, exon + 1, self.reference, kuerzel=self.kuerzel)
+            x = PrimerExon(self.nm_number, exon + 1, self.reference)
             list_primers = x.create_primer(write_file=False)
             for primer_pair in list_primers:
-                out_strings.append(functions.primer_output_exon(gene_info['name'], self.nm_number, primer_pair[0],
-                                                                gene_info['strand'], exon + 1, primer_pair[3]))
+                epp = primer.ExonPrimerPair(gene_info, primer_pair[0], exon + 1, primer_pair[3])
+                out_strings.append(epp.output)
+                # out_strings.append(functions.primer_output_exon(gene_info['name'], self.nm_number, primer_pair[0],
+                #                                                gene_info['strand'], exon + 1, primer_pair[3]))
 
         self.write_outfile(gene_info, out_strings)
 
@@ -549,8 +526,9 @@ class PrimerGenomicPosition(Primertool):
         outfile = '{0}/{1}_{2}_{3}_primer.txt'.format(self.output_dir, self.chromosome, self.start, self.end)
         primer_strings = []
         for item in list_primers:
-            primer_strings.append(
-                functions.primer_output_genomic(item[0], self.chromosome, item[1], item[2], item[3]))
+            gppp = primer.GenomicPositionPrimerPair(item[0], self.chromosome, item[1], item[2], item[3])
+            primer_strings.append(gppp.output)
+            #primer_strings.append(functions.primer_output_genomic(item[0], self.chromosome, item[1], item[2], item[3]))
         functions.write_output_file(outfile, primer_strings)
         return outfile
 

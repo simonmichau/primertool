@@ -16,3 +16,7 @@ class PrimertoolInputError(PrimertoolError):
 
 class PrimertoolHGVSError(PrimertoolError):
     pass
+
+
+class PrimertoolMutalyzerError(PrimertoolError):
+    pass
