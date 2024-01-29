@@ -9,10 +9,12 @@ import primer3
 import math
 import requests
 import json
+import pandas as pd
 
 import primertool.functions as functions
 import primertool.exceptions as exceptions
 import primertool.primer as primer
+import primertool.config as config
 
 import logging
 
@@ -337,6 +339,7 @@ class PrimerMutation(Primertool):
             x = PrimerExon(nm_number, mutation_position['exon_number'], self.reference)
             primer_output = x.create_primer()
         elif mutation_position['is_in_exon'] and mutation_position['exon_len'] > self.max_insert:
+            # TODO: test this case, it is not properly implemented yet
             logging.info('Mutation is in an exon, but the exon length is bigger than the max insert size')
             x = PrimerGenomicPosition(gene_info['chromosome'], mutation_position['mut_start'],
                                       mutation_position['mut_end'], self.reference)
@@ -411,11 +414,12 @@ class PrimerExon(Primertool):
         functions.write_output_file(outfile, primer_list)
 
         # Ordertable
-        ordertable = epp_list[0].get_ordertable()
-        print(ordertable)
-        return outfile
+        ordertable = [epp.get_ordertable() for epp in epp_list]
+        if len(ordertable) > 1:
+            ordertable = pd.concat(ordertable, ignore_index=True)
+        return ordertable
 
-    def create_primer(self, write_file=True):
+    def create_primer(self, return_ordertable=True):
         """ Create primers for a specific exon.
 
         The following steps are taken:
@@ -445,10 +449,13 @@ class PrimerExon(Primertool):
 
         list_primers = self.iterate_positions(exon_positions, gene_info['chromosome'])
         logging.info(f'Primers generated. {str(len(list_primers))} primers found. ')
-        if write_file:
-            outfile = self.write_outfile(gene_info, list_primers)
 
-        return list_primers
+        ordertable = self.write_outfile(gene_info, list_primers)
+
+        if not return_ordertable:
+            return list_primers
+
+        return ordertable
 
 
 class PrimerGen(Primertool):
@@ -490,14 +497,15 @@ class PrimerGen(Primertool):
         for exon in range(0, gene_info['exoncount']):
             logging.info(f'Creating primers for exon {exon + 1}')
             x = PrimerExon(self.nm_number, exon + 1, self.reference)
-            list_primers = x.create_primer(write_file=False)
+            list_primers = x.create_primer(return_ordertable=False)
             for primer_pair in list_primers:
                 epp = primer.ExonPrimerPair(gene_info, primer_pair[0], exon + 1, primer_pair[3])
                 out_strings.append(epp.output)
                 # out_strings.append(functions.primer_output_exon(gene_info['name'], self.nm_number, primer_pair[0],
                 #                                                gene_info['strand'], exon + 1, primer_pair[3]))
 
-        self.write_outfile(gene_info, out_strings)
+        ordertable = self.write_outfile(gene_info, out_strings)
+        return ordertable
 
 
 class PrimerGenomicPosition(Primertool):

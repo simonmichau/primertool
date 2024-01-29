@@ -1,8 +1,19 @@
 #!/usr/bin/env python
 # encoding: utf-8
 # AUTHOR: Simon Michau (smichau@ukaachen.de)
+import logging
 
-KUERZEL = None
+KUERZEL = None  # Kuerzel of the user for the order form
+GENOME = None  # Genome assembly (hg19, hg38)
+VARIANT = None  # HGVS variant [only used for PrimerMutation]
+NM_NUMBER = None  # NM number [used for PrimerExon and PrimerGen]
+EXON_NUMBER = None  # Exon number [only used for PrimerExon]
+CHROMOSOME = None  # Chromosome [only used for PrimerGenomicPosition]
+START = None  # Start position [only used for PrimerGenomicPosition]
+END = None  # End position [only used for PrimerGenomicPosition]
+
+# Logging config
+LOGGING_LEVEL = logging.INFO  # Logging level
 
 
 class Config:
