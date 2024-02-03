@@ -2,7 +2,7 @@
 # encoding: utf-8
 # AUTHOR: Simon Michau (smichau@ukaachen.de)
 
-import primertool.config as config
+import primertool_v1.config as config
 import datetime
 import pandas as pd
 
@@ -163,8 +163,29 @@ class GenomicPositionPrimerPair(PrimerPair):
         return self.output
 
     def get_ordertable(self):
-        # TODO
-        pass
+        date = datetime.datetime.now().strftime("%d.%m.%Y")
+        kuerzel = config.KUERZEL
+
+        # order table as string/csv
+        #order_table = (
+        #    f'Datum\tAuftraggeber\tPrimer zur Bestellung\tGen/Fragment\tTranskript\tSchmelztemperatur\tbp\n'
+        #    f'{date}\t{kuerzel}\t{self.primer_forwards}\t{self.gene_name}\t{self.nm_number}\t{self.mt}\t{self.bp}\n'
+        #    f'{date}\t{kuerzel}\t{self.primer_reverse}\t{self.gene_name}\t{self.nm_number}\t{self.mt}\t{self.bp}\n'
+        #)
+
+        # TODO: find out what information should be in the ordertable in case of a GP primer
+        # order table as pandas dataframe
+        df_order_table = pd.DataFrame({
+            'Datum': [date, date],
+            'Auftraggeber': [kuerzel, kuerzel],
+            'Primer zur Bestellung': [self.primer_forwards, self.primer_reverse],
+            'Gen/Fragment': ['chromosome', 'chromosome'],
+            'Transkript': ['transcript', 'transcript'],
+            'Schmelztemperatur': [self.mt, self.mt],
+            'bp': [self.bp, self.bp]
+        })
+
+        return df_order_table
 
     def generate_output(self):
         header = f'Chromosome: {self.chromosome}, Start: {self.start}, Ende: {self.end}, Primerpaar: {self.index}\n'
