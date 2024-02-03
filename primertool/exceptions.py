@@ -1,7 +1,3 @@
-# AUTHOR: Daniela Dey
-# Exceptions for Primertool
-
-
 class PrimertoolError(Exception):
     pass
 
@@ -11,10 +7,6 @@ class PrimertoolGenomeError(PrimertoolError):
 
 
 class PrimertoolInputError(PrimertoolError):
-    pass
-
-
-class PrimertoolHGVSError(PrimertoolError):
     pass
 
 
