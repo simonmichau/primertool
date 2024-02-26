@@ -1,50 +1,213 @@
+import genomepy
 import re
 import hgvs.parser
 import hgvs.assemblymapper
 import hgvs.variantmapper
 import hgvs.dataproviders.uta
 import hgvs.exceptions
-import logging
-import zeep
-import requests
-import json
 import mysql.connector
 from mysql.connector import errorcode
+import logging
 
-from primertool.exceptions import PrimertoolInputError, PrimertoolHGVSError, PrimertoolGenomeError
+from . import exceptions
+
+logger = logging.getLogger(__package__)
 
 
-def query_database(config, query):
+def query_ucsc_database(genome_assembly: str, query: str):
     """ Query a SQL database using a config and specific query.
 
     Using mysql.connector with a dict as config, see
     https://dev.mysql.com/doc/connector-python/en/connector-python-example-connecting.html
 
     Args:
-        config: dict with user/password/host&database
+        genome_assembly:
         query: str
 
     Returns: list
 
     """
+    # general ucsc sql database config
+    ucsc_config = dict(user='genome',
+                       password='',
+                       host='genome-euro-mysql.soe.ucsc.edu',
+                       database=genome_assembly,
+                       raise_on_warnings=True,
+                       )
+    query_result = None
     try:
-        cnx = mysql.connector.connect(**config)
+        cnx = mysql.connector.connect(**ucsc_config)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        query_result = cursor.fetchall()
     except mysql.connector.Error as err:
         if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-            print("Something is wrong with your user name or password")
+            logger.error("Something is wrong with your user name or password")
         elif err.errno == errorcode.ER_BAD_DB_ERROR:
-            print("Database does not exist")
+            logger.error("Database does not exist")
         else:
-            print(err)
+            logger.error(err)
 
-    cursor = cnx.cursor()
-    cursor.execute(query)
-    query_result = cursor.fetchall()
     if query_result:
         return query_result
     else:
-        logging.info('This database query did not return any results. Please check your input.')
+        logger.debug('This database query did not return any results. Please check your input.')
         return None
+
+
+def get_gene_information(genome_assembly: str, nm_number: str):
+    """ Retrieve gene information from RefSeq database for a given NM number. """
+
+    logger.info('Collecting gene information from RefSeq database')
+    query = f'SELECT chrom, strand, name2, exonCount, cdsStart, cdsEnd, exonStarts, exonEnds ' \
+            f'FROM refGene WHERE name="{nm_number}"'
+
+    query_results = query_ucsc_database(genome_assembly, query)
+
+    if not query_results:
+        raise exceptions.PrimertoolInputError(f'Could not find gene information for {nm_number} in RefSeq database')
+
+    if len(query_results) > 1:
+        for entry in query_results:
+            if len(entry[0]) < 6:
+                result = entry
+    else:
+        result = query_results[0]
+
+    gene = dict(nm_number=nm_number,
+                chromosome=result[0],
+                strand=result[1],
+                name=result[2],
+                exoncount=result[3],
+                cds_start=result[4],
+                cds_end=result[5],
+                exon_starts=[int(x) for x in result[6].decode("utf-8").split(',') if x],
+                exon_ends=[int(x) for x in result[7].decode("utf-8").split(',') if x]
+                )
+    return gene
+
+
+def calculate_targets(target_start: int, target_end: int, primer_bases: int) -> dict:
+    """ Defining the sequence start and end positions.
+
+    Primer bases are the number of bases to each side of the target sequence in which primer3 looks for a possible
+    primer. These are added to sequence start and end respectively to calculate the sequence start and end positions.
+    The size range is a list with the length of the target sequence and target sequence with the primer bases added.
+    Primer3 should design primers in this size range.
+
+
+    Args:
+        target_start: int
+        target_end: int
+        primer_bases: int
+
+    Returns: dict
+
+    """
+    seq_start = target_start - primer_bases
+    seq_end = target_end + primer_bases
+    target_base = target_start - seq_start
+    target_length = target_end - target_start
+    size_range = [target_length, int(target_length + primer_bases / 2)]
+
+    target_info = dict(target_start=target_start,
+                       target_end=target_end,
+                       seq_start=seq_start,
+                       seq_end=seq_end,
+                       target_base=target_base,
+                       target_length=target_length,
+                       size_range=size_range)
+    return target_info
+
+
+def mask_snps(genome: genomepy.Genome, chromosome: str, seq_start: int, seq_end: int, genome_assembly: str):
+    """ Mask common SNP positions with an N in the sequence.
+
+    Using the get_snps() function to retrieve common SNPs in the given sequence from UCSC. Extract the genomic sequence
+    between the given positions via genomepy and replace the bases at common SNP positions with an N.
+
+    Args:
+        genome: genomepy object
+        chromosome: str
+        seq_start: int
+        seq_end: int
+        genome_assembly: str
+
+    Returns: list
+
+    """
+    sequence = str(genome[chromosome][seq_start:seq_end]).upper()
+
+    snps = get_snps(chromosome, seq_start, seq_end, genome_assembly)
+    if snps is None:
+        seq_snps = sequence
+    else:
+        snp_seq = list(sequence)
+        for j in snps:
+            snp_seq[j - 2] = 'N'
+        seq_snps = ''.join(snp_seq)
+
+    return seq_snps
+
+
+def get_snps(chromosome: str, seq_start: int, seq_end: int, genome_assembly: str):
+    """Retrieve common SNPs from the UCSC database.
+
+    Query the UCSC database with the chromosome and position data to find common snps in the sequence, which need to
+    be masked. Snps are returned as list.
+
+    Args:
+        chromosome: str
+        seq_start: int
+        seq_end: int
+        genome_assembly: str
+
+    Returns: list
+
+    """
+    snpquery = f"SELECT chromStart FROM snp150Common WHERE chrom='{chromosome}' AND class='single' AND chromEnd BETWEEN'{seq_start}'AND'{seq_end}'"
+    snp = query_ucsc_database(genome_assembly, snpquery)
+    snps = []
+    if snp is not None:
+        for idx, i in enumerate(snp):
+            snps.append(seq_end - int(str(snp[idx])[1:-2]))
+
+    return snps
+
+
+def mutalyzer_error_handler(response):
+    """ Checks for errors in the mutalyzer response and raises an exception if there is an error. """
+
+    if 'message' in response and 'custom' in response:
+        # If the entries at the top level of the response are message and custom, there is a problem with the input
+        logger.info(response['message'])
+
+        # Handle infos and errors
+        if 'infos' in response['custom']:
+            for info in response['custom']['infos']:
+                logger.info(f'{info["code"]}: {info["details"]}')  # print all infos
+        if 'errors' in response['custom']:
+            for error in response['custom']['errors']:
+                logger.error(f'{error["code"]}: {error["details"]}')  # print all errors
+
+            error_code = response['custom']['errors'][0]['code']
+            error_message = response['custom']['errors'][0]['details']
+
+            if error_code == 'EPARSE':
+                raise exceptions.PrimertoolInputError('There is an error in the given mutation', error_code,
+                                                      error_message)
+            elif error_code == 'ERETR':
+                raise exceptions.PrimertoolInputError('The given NM number has an error and could not be found',
+                                                      error_code,
+                                                      error_message)
+            elif error_code == 'ENOINTRON':
+                raise exceptions.PrimertoolInputError('The given NM number has an error and could not be found',
+                                                      error_code,
+                                                      error_message)
+            elif error_code == 'ESYNTAXUC':
+                raise exceptions.PrimertoolInputError(error_code, error_message)
+            else:
+                raise exceptions.PrimertoolInputError('There was a problem with the input. ', error_code, error_message)
 
 
 def parse_mutation(mutation):
@@ -67,46 +230,8 @@ def parse_mutation(mutation):
         hp = hgvs.parser.Parser()
         hgvs_mutation = hp.parse_hgvs_variant(mutation)
     except hgvs.exceptions.HGVSParseError as msg:
-        raise PrimertoolInputError('Could not parse the input. There is a problem with the hgvs nomenclature: '
-                                   '{0}'.format(msg))
+        raise exceptions.PrimertoolInputError(f'Could not parse the input. There is a problem with the hgvs nomenclature: {msg}')
     return hgvs_mutation
-
-
-# TODO: remove; This function is not used anymore
-def convert_variant_notation(mutation, reference, url):
-    """ Convert variant from coding to genomic position.
-
-    Using the mutalyzer api the variant is coverted from coding to genomic based on the given reference genome.
-    Mutalyzer does not always know the newest transcript version number, therefore the version number is decreased
-    until a conversion can be achieved. The converted variant is then parsed with the hgvs parser again to return a
-    hgvs tree object.
-
-    Args:
-        mutation: hgvs parser object
-        reference: str (hg38/hg19)
-        url: str (mutalyzer api url)
-
-    Returns: hgvs.parser tree object
-
-    """
-    client = zeep.Client(url)
-    var_g = client.service.numberConversion(reference, mutation)
-
-    if not var_g[0]:
-        nm, version = split_nm(str(mutation.ac))
-        print(nm, version)
-        if version != 1:
-            version = int(version) - 1
-            new_nm = nm + '.' + str(version)
-            mutation.ac = new_nm
-            genomic = convert_variant_notation(mutation, reference, url)
-        else:
-            raise PrimertoolInputError('Mutation could not be converted into a genomic position')
-    else:
-        genomic = parse_mutation(var_g[0])
-        logging.info('The genomic position of {0} is: {1}'.format(mutation, genomic))
-
-    return genomic
 
 
 def split_nm(nm_number):
@@ -150,7 +275,6 @@ def find_sequence_positions(exon_starts, exon_ends, exon_count, strand, mutation
     Returns: dict
 
     """
-
     mut_start = int(str(mutation_position.start))
     mut_end = int(str(mutation_position.end))
     exon_number = 0
@@ -166,304 +290,5 @@ def find_sequence_positions(exon_starts, exon_ends, exon_count, strand, mutation
             else:
                 exon_number = exon + 1
 
-    return dict(exon_number=exon_number,
-                mut_start=mut_start,
-                mut_end=mut_end,
-                mut_length=mut_end - mut_start,
-                is_in_exon=is_in_exon,
-                exon_len=exon_len)
-
-
-def calculate_targets(target_start, target_end, primer_bases):
-    """ Defining the sequence start and end positions.
-
-    Primer bases are the number of bases to each side of the target sequence in which primer3 looks for a possible
-    primer. These are added to sequence start and end respectively to calculate the sequence start and end positions.
-    The size range is a list with the length of the target sequence and target sequence with the primer bases added.
-    Primer3 should design primers in this size range.
-
-
-    Args:
-        target_start: int
-        target_end: int
-        primer_bases: int
-
-    Returns: dict
-
-    """
-    seq_start = target_start - primer_bases
-    seq_end = target_end + primer_bases
-
-    target_base = target_start - seq_start
-    target_length = target_end - target_start
-    size_range = [target_length, int(target_length + primer_bases / 2)]
-    target_info = dict(target_start=target_start,
-                       target_end=target_end,
-                       seq_start=seq_start,
-                       seq_end=seq_end,
-                       target_base=target_base,
-                       target_length=target_length,
-                       size_range=size_range
-                       )
-    return target_info
-
-
-def get_snps(chromosome, seq_start, seq_end, uscsc_config):
-    """Retrieve common SNPs from the UCSC database.
-
-    Query the UCSC database with the chromosome and position data to find common snps in the sequence, which need to
-    be masked. Snps are returned as list.
-
-    Args:
-        chromosome: str
-        seq_start: int
-        seq_end: int
-        uscsc_config: dict
-
-    Returns: list
-
-    """
-    snpquery = f"SELECT chromStart FROM snp150Common WHERE chrom='{chromosome}' AND class='single' AND chromEnd BETWEEN'{seq_start}'AND'{seq_end}'"
-    snp = query_database(uscsc_config, snpquery)
-    if snp is None:
-        return None
-    else:
-        snps = []
-        for idx, i in enumerate(snp):
-            snps.append(seq_end - int(str(snp[idx])[1:-2]))
-        return snps
-
-
-def mask_snps(genome, chromosome, seq_start, seq_end, ucsc_config):
-    """ Mask common SNP positions with an N in the sequence.
-
-    Using the get_snps() function to retrieve common SNPs in the given sequence from UCSC. Extract the genomic sequence
-    between the given positions via genomepy and replace the bases at common SNP positions with an N.
-
-    Args:
-        genome: genomepy object
-        chromosome: str
-        seq_start: int
-        seq_end: int
-        ucsc_config: dict
-
-    Returns: list
-
-    """
-    snps = get_snps(chromosome, seq_start, seq_end, ucsc_config)
-    sequence = str(genome[chromosome][seq_start:seq_end]).upper()
-    if snps is None:
-        seq_snps = sequence
-    else:
-        snp_seq = list(sequence)
-        for j in snps:
-            snp_seq[j - 2] = 'N'
-        seq_snps = ''.join(snp_seq)
-
-    return seq_snps
-
-
-def primer_output_exon(genname, nm_number, primer, strand, exon_number, index):
-    """ Create output string for genomic position primers.
-
-    Flips forward and reverse primer based on strand orientation of the gene.
-
-    Args:
-        genname: str
-        nm_number: str
-        primer: dict, primer3 output
-        strand: str
-        exon_number: int
-        index: int
-
-    Returns: list
-
-    """
-    header = f'{genname}, Exon: {exon_number}, Primerpaar: {index}\n'
-    header_2 = """{0:7}\t{1:<5}\t{2:<6}\t{3:4}\t{4:4}\t{5:35}""".format('', 'Start', 'Length', 'Tm', 'GC%', 'Sequence')
-    exon_str = str(exon_number).zfill(2)
-    temp = (primer['PRIMER_RIGHT_0_TM'] + primer['PRIMER_LEFT_0_TM']) / 2
-
-    if strand == '+':
-        primer_pairs = """
-Forward\t{PRIMER_LEFT_0[0]:<5}\t{PRIMER_LEFT_0[1]:<6}\t{PRIMER_LEFT_0_TM:2.2f}\t{PRIMER_LEFT_0_GC_PERCENT:2.2f}\t{PRIMER_LEFT_0_SEQUENCE:35}
-Reverse\t{PRIMER_RIGHT_0[0]:<5}\t{PRIMER_RIGHT_0[1]:<6}\t{PRIMER_RIGHT_0_TM:2.2f}\t{PRIMER_RIGHT_0_GC_PERCENT:2.2f}\t{PRIMER_RIGHT_0_SEQUENCE:35}
-Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
-""".format(**primer)
-
-        info = f"""
-{genname}-E{exon_str}F;{primer['PRIMER_LEFT_0_SEQUENCE']}
-{genname}-E{exon_str}R;{primer['PRIMER_RIGHT_0_SEQUENCE']}
-{genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
-
-"""
-        primer_forwards = f'{genname}-E{exon_str}F;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
-        primer_reverse = f'{genname}-E{exon_str}R;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
-    else:
-        primer_pairs = """
-
-Forward\t{PRIMER_RIGHT_0[0]:<5}\t{PRIMER_RIGHT_0[1]:<6}\t{PRIMER_RIGHT_0_TM:2.2f}\t{PRIMER_RIGHT_0_GC_PERCENT:2.2f}\t{PRIMER_RIGHT_0_SEQUENCE:35}
-Reverse\t{PRIMER_LEFT_0[0]:<5}\t{PRIMER_LEFT_0[1]:<6}\t{PRIMER_LEFT_0_TM:2.2f}\t{PRIMER_LEFT_0_GC_PERCENT:2.2f}\t{PRIMER_LEFT_0_SEQUENCE:35}
-Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
-""".format(**primer)
-
-        info = f"""
-{genname}-E{exon_str}F;{primer['PRIMER_RIGHT_0_SEQUENCE']}
-{genname}-E{exon_str}R;{primer['PRIMER_LEFT_0_SEQUENCE']}
-{genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
-
-"""
-        primer_forwards = f'{genname}-E{exon_str}F;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
-        primer_reverse = f'{genname}-E{exon_str}R;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
-
-    output = [header, header_2, primer_pairs, info], primer_forwards, primer_reverse
-
-    return output
-
-
-def primer_output_posedit(genname, nm_number, primer, strand, posedit, index):
-    """ Create output string for genomic position primers.
-
-    Flips forward and reverse primer based on strand orientation of the gene.
-
-    Args:
-        genname: str
-        nm_number: str
-        primer: dict, primer3 output
-        strand: str
-        posedit: int
-        index: int
-
-    Returns: list
-
-    """
-    header = f'{genname}, Position: {posedit}, Primerpaar: {index}\n'
-    header_2 = """{0:7}\t{1:<5}\t{2:<6}\t{3:4}\t{4:4}\t{5:35}""".format('', 'Start', 'Length', 'Tm', 'GC%', 'Sequence')
-    exon_str = str(posedit).zfill(2)
-    temp = (primer['PRIMER_RIGHT_0_TM'] + primer['PRIMER_LEFT_0_TM']) / 2
-
-    if strand == '+':
-        primer_pairs = """
-Forward\t{PRIMER_LEFT_0[0]:<5}\t{PRIMER_LEFT_0[1]:<6}\t{PRIMER_LEFT_0_TM:2.2f}\t{PRIMER_LEFT_0_GC_PERCENT:2.2f}\t{PRIMER_LEFT_0_SEQUENCE:35}
-Reverse\t{PRIMER_RIGHT_0[0]:<5}\t{PRIMER_RIGHT_0[1]:<6}\t{PRIMER_RIGHT_0_TM:2.2f}\t{PRIMER_RIGHT_0_GC_PERCENT:2.2f}\t{PRIMER_RIGHT_0_SEQUENCE:35}
-Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
-""".format(**primer)
-
-        info = f"""
-{genname}-{exon_str}F;{primer['PRIMER_LEFT_0_SEQUENCE']}
-{genname}-{exon_str}R;{primer['PRIMER_RIGHT_0_SEQUENCE']}
-{genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
-
-"""
-        primer_forwards = f'{genname}-{exon_str}F;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
-        primer_reverse = f'{genname}-{exon_str}R;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
-    else:
-        primer_pairs = """
-
-Forward\t{PRIMER_RIGHT_0[0]:<5}\t{PRIMER_RIGHT_0[1]:<6}\t{PRIMER_RIGHT_0_TM:2.2f}\t{PRIMER_RIGHT_0_GC_PERCENT:2.2f}\t{PRIMER_RIGHT_0_SEQUENCE:35}
-Reverse\t{PRIMER_LEFT_0[0]:<5}\t{PRIMER_LEFT_0[1]:<6}\t{PRIMER_LEFT_0_TM:2.2f}\t{PRIMER_LEFT_0_GC_PERCENT:2.2f}\t{PRIMER_LEFT_0_SEQUENCE:35}
-Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
-""".format(**primer)
-
-        info = f"""
-{genname}-E{exon_str}F;{primer['PRIMER_RIGHT_0_SEQUENCE']}
-{genname}-E{exon_str}R;{primer['PRIMER_LEFT_0_SEQUENCE']}
-{genname}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp; {nm_number}
-
-"""
-        primer_forwards = f'{genname}-{exon_str}F;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
-        primer_reverse = f'{genname}-{exon_str}R;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
-
-    output = [header, header_2, primer_pairs, info], primer_forwards, primer_reverse
-
-    return output
-
-
-def primer_output_genomic(primer, chromosome, start, end, index):
-    """ Create output string for genomic position primers.
-
-    Args:
-        primer: dict, primer3 output
-        chromosome: str
-        start: int
-        end: int
-        index: int
-
-    Returns: list
-
-    """
-
-    header = f'Chromosome: {chromosome}, Start: {start}, Ende: {end}, Primerpaar: {index}\n'
-    header_2 = """{0:7}\t{1:<5}\t{2:<6}\t{3:4}\t{4:4}\t{5:35}""".format('', 'Start', 'Length', 'Tm', 'GC%', 'Sequence')
-
-    primer_pairs = """
-Forward\t{PRIMER_LEFT_0[0]:<5}\t{PRIMER_LEFT_0[1]:<6}\t{PRIMER_LEFT_0_TM:2.2f}\t{PRIMER_LEFT_0_GC_PERCENT:2.2f}\t{PRIMER_LEFT_0_SEQUENCE:35}
-Reverse\t{PRIMER_RIGHT_0[0]:<5}\t{PRIMER_RIGHT_0[1]:<6}\t{PRIMER_RIGHT_0_TM:2.2f}\t{PRIMER_RIGHT_0_GC_PERCENT:2.2f}\t{PRIMER_RIGHT_0_SEQUENCE:35}
-Product Length\t{PRIMER_PAIR_0_PRODUCT_SIZE}
-""".format(**primer)
-
-    temp = (primer['PRIMER_RIGHT_0_TM'] + primer['PRIMER_LEFT_0_TM']) / 2
-    info = f"""
-{chromosome}-{start}F;{primer['PRIMER_LEFT_0_SEQUENCE']}
-{chromosome}-{end}R;{primer['PRIMER_RIGHT_0_SEQUENCE']}
-{chromosome}-{start}-{end}; {round(temp)} °C; {primer['PRIMER_PAIR_0_PRODUCT_SIZE']}bp;
-
-"""
-    primer_forwards = f'{chromosome}-{start}F;{primer["PRIMER_LEFT_0_SEQUENCE"]}'
-    primer_reverse = f'{chromosome}-{end}R;{primer["PRIMER_RIGHT_0_SEQUENCE"]}'
-
-    output = [header, header_2, primer_pairs, info], primer_forwards, primer_reverse
-
-    return output
-
-
-def write_output_file(outfile, primer_strings):
-    """ Write primer pairs to outfile.
-
-    Args:
-        outfile: str
-        primer_strings: list of strings
-
-    """
-    logging.info(f'Writing output to {outfile}')
-    with open(outfile, 'w') as f:
-        for item in primer_strings:
-            for x in item:
-                f.write(x)
-
-        # Format primer_strings for printing
-        for item in primer_strings:
-            for x in item:
-                print(x)
-
-
-def mutalyzer_error_handler(response):
-    """ Checks for errors in the mutalyzer response and raises an exception if there is an error. """
-
-    if 'message' in response and 'custom' in response:
-        # If the entries at the top level of the response are message and custom, there is a problem with the input
-        logging.info(response['message'])
-
-        # Handle infos and errors
-        if 'infos' in response['custom']:
-            for info in response['custom']['infos']:
-                logging.info(f'{info["code"]}: {info["details"]}')  # print all infos
-        if 'errors' in response['custom']:
-            for error in response['custom']['errors']:
-                logging.error(f'{error["code"]}: {error["details"]}')  # print all errors
-
-            error_code = response['custom']['errors'][0]['code']
-            error_message = response['custom']['errors'][0]['details']
-
-            if error_code == 'EPARSE':
-                raise PrimertoolInputError('There is an error in the given mutation', error_code, error_message)
-            elif error_code == 'ERETR':
-                raise PrimertoolInputError('The given NM number has an error and could not be found', error_code,
-                                           error_message)
-            elif error_code == 'ENOINTRON':
-                raise PrimertoolInputError('The given NM number has an error and could not be found', error_code,
-                                           error_message)
-            elif error_code == 'ESYNTAXUC':
-                raise PrimertoolInputError(error_code, error_message)
-            else:
-                raise PrimertoolInputError('There was a problem with the input. ', error_code, error_message)
+    return dict(exon_number=exon_number, mut_start=mut_start, mut_end=mut_end, mut_length=mut_end - mut_start,
+                is_in_exon=is_in_exon, exon_len=exon_len)
