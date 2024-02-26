@@ -41,37 +41,33 @@ If you don't have gcc installed, you can install it by running
 Basic usage examples
 ---------------------
 
-1. Generating primers for a mutation using PrimerMutation:
+1. Generating primers for a mutation using VariantPrimerGenerator:
 
 .. code:: Python
 
-    import primertool
-    x = primertool.PrimerMutation('NM_003165.6:c.1702G>A', 'hg38')
-    x.create_primer()
+    from primertool import primertool as pt
+    df = pt.VariantPrimerGenerator('NM_003165.6:c.1702G>A', 'hg38', kuerzel='SM').ordertable
 
-2. Generating primer for a single exon using PrimerExon:
-
-.. code:: Python
-
-    import primertool
-    x = primertool.PrimerExon('NM_000451', '6', 'hg38')
-    x.create_primer()
-
-3. Generating primers for every exon in a gene using PrimerGen:
+2. Generating primer for a single exon using ExonPrimerGenerator:
 
 .. code:: Python
 
-    import primertool
-    x = primertool.PrimerGen('NM_000451', 'hg38')
-    x.create_primer()
+    from primertool import primertool as pt
+    df = pt.ExonPrimerGenerator('NM_000451', 6, 'hg38', kuerzel='SM').ordertable
 
-4. Generating primer for a genomic position using PrimerGenomicPosition:
+3. Generating primers for every exon in a gene using GenePrimerGenerator:
 
 .. code:: Python
 
-    import primertool
-    x = primertool.PrimerGenomicPosition('chr12', 121814175, 121814175, 'hg38')
-    x.create_primer()
+    from primertool import primertool as pt
+    df = pt.GenePrimerGenerator('NM_000451', 'hg38', kuerzel='SM').ordertable
+
+4. Generating primer for a genomic position using GenomicPositionPrimerGenerator:
+
+.. code:: Python
+
+    from primertool import primertool as pt
+    df = pt.GenomicPositionPrimerGenerator('chr12', 121814175, 121814175, 'hg38', kuerzel='SM').ordertable
 
 
 
