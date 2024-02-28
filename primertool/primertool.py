@@ -46,8 +46,8 @@ class ExonPrimerPair(PrimerPair):
         self.orderprimer_forwards, self.orderprimer_reverse, self.primer_forwards, self.primer_reverse = self.get_order_primers()
 
         # Check if primer pair is unique in the targeted chromosome (to avoid wrongful detection)
-        in_silico_pcr = InSilicoPCR(self.primer_forwards, self.primer_reverse, self.chromosome)
-        if not in_silico_pcr.has_unique_primers():
+        in_silico_pcr = InSilicoPCR(self.primer_forwards, self.primer_reverse)
+        if not in_silico_pcr.is_uniquely_binding():
             # TODO: either throw warning here or delete this ExonPrimerPair so it does not appear in the order list
             print("primers are not unique")
 
@@ -93,8 +93,8 @@ class GenomicPositionPrimerPair(PrimerPair):
         self.end = end
         self.orderprimer_forwards, self.orderprimer_reverse, self.primer_forwards, self.primer_reverse = self.get_order_primers()
 
-        in_silico_pcr = InSilicoPCR(self.primer_forwards, self.primer_reverse, self.chromosome)
-        if not in_silico_pcr.has_unique_primers():
+        in_silico_pcr = InSilicoPCR(self.primer_forwards, self.primer_reverse)
+        if not in_silico_pcr.is_uniquely_binding():
             # TODO: either throw warning here or delete this ExonPrimerPair so it does not appear in the order list
             print("primers are not unique")
 
@@ -224,7 +224,8 @@ class PrimerGenerator(object):
             primers, target_size = self.design_primer(pos_start, pos_end, primer_bases)
             while primers['PRIMER_PAIR_NUM_RETURNED'] == 0:
                 logger.debug(
-                    f'No primers <{primer_bases}primer bases were found yet, increasing allowed sequence size to {primer_bases + 100} primer bases')
+                    f'No primers <{primer_bases}primer bases around target position found yet, increasing allowed '
+                    f'distance from target position to {primer_bases + 100} primer bases')
 
                 primer_bases = primer_bases + 100
 
