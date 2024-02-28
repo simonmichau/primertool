@@ -451,8 +451,9 @@ class VariantPrimerGenerator(PrimerGenerator):
         if api_response.status_code == 200:
             response = api_response.json()
         else:
+            errors = [f"{error['code']}: {error['details']}" for error in api_response.json()['custom']['errors']]
             raise exceptions.PrimertoolMutalyzerError(
-                f'Could not connect to mutalyzer api. Status code: {api_response.status_code}')
+                f'Status code: {api_response.status_code}. Mutalyzer API request failed. Errors: {errors}')
 
         # Error handling for mutalyzer response
         functions.mutalyzer_error_handler(response)
