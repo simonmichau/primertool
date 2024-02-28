@@ -66,7 +66,6 @@ dependencies:
   - pandocfilters=1.5.0=pyhd3eb1b0_0
   - pcre=8.45=h295c915_0
   - pickleshare=0.7.5=pyhd3eb1b0_1003
-  - pip=21.2.2=py36h06a4308_0
   - prometheus_client=0.13.1=pyhd3eb1b0_0
   - prompt_toolkit=3.0.20=hd3eb1b0_0
   - ptyprocess=0.7.0=pyhd3eb1b0_2
@@ -98,24 +97,32 @@ dependencies:
   - zeromq=4.3.5=h6a678d5_0
   - zlib=1.2.13=h5eee18b_0
   - pip:
+      - altair==4.1.0
       - appdirs==1.4.4
       - attrs==22.2.0
+      - backports-zoneinfo==0.2.1
       - beautifulsoup4==4.12.2
       - biocommons-seqrepo==0.6.5
       - biopython==1.79
       - bioutils==0.5.7
+      - blinker==1.5
       - boltons==23.1.1
       - bs4==0.0.1
       - bucketcache==0.12.1
       - cached-property==1.5.2
+      - cachetools==4.2.4
       - charset-normalizer==2.0.12
       - click==8.0.4
       - colorama==0.4.5
       - coloredlogs==15.0.1
+      - commonmark==0.9.1
       - configparser==5.2.0
       - cssselect==1.1.0
+      - dataclasses==0.8
       - fake-useragent==1.4.0
       - genomepy==0.9.3
+      - gitdb==4.0.9
+      - gitpython==3.1.18
       - hgvs==1.5.1
       - humanfriendly==10.0
       - idna==3.6
@@ -134,29 +141,45 @@ dependencies:
       - parsley==1.3
       - parso==0.7.1
       - pexpect==4.9.0
+      - pillow==8.4.0
+      - pip==21.3.1
       - primer3-py==0.6.1
-      - primertool==0.0.0
       - prompt-toolkit==3.0.36
+      - protobuf==3.19.6
       - psycopg2-binary==2.9.5
+      - pyarrow==6.0.1
+      - pydeck==0.6.2
       - pyee==8.2.2
       - pyfaidx==0.7.1
       - pygments==2.14.0
+      - pympler==1.0.1
       - pyppeteer==0.2.6
       - pyquery==1.4.3
       - pysam==0.22.0
       - pytz==2023.3.post1
+      - pytz-deprecation-shim==0.1.0.post0
       - pyyaml==6.0.1
       - represent==1.6.0.post0
       - requests==2.27.1
       - requests-html==0.10.0
       - requests-toolbelt==1.0.0
+      - rich==12.6.0
+      - semver==2.13.0
+      - smmap==5.0.0
       - soupsieve==2.3.2.post1
       - sqlparse==0.4.4
+      - streamlit==1.10.0
       - tabulate==0.8.10
+      - toml==0.10.2
+      - toolz==0.12.0
       - tqdm==4.64.1
       - typing-extensions==4.1.1
+      - tzdata==2024.1
+      - tzlocal==4.2
       - urllib3==1.26.18
+      - validators==0.20.0
       - w3lib==2.0.1
+      - watchdog==2.3.1
       - wcwidth==0.2.12
       - websockets==9.1
       - yoyo-migrations==8.2.0

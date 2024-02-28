@@ -21,9 +21,9 @@ Local installation is possible by running
 
 .. code:: bash
 
-    pip install .
+    conda env create -f environment.yml
 
-in the main directory.
+in the main directory (requires conda and pip installed).
 
 You will also need gcc installed on your system, so check if you already have it by running
 
