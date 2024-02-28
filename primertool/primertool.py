@@ -401,9 +401,14 @@ class VariantPrimerGenerator(PrimerGenerator):
 
     @staticmethod
     def check_variant(variant: str):
+        # correct case
+        if variant.startswith('Chr') or variant.startswith('chr'):
+            msg = f'Only NM numbers are supported by VariantPrimerGenerator. Use GenomicPositionPrimerGenerator instead'
+            logger.exception(msg)
+            raise exceptions.PrimertoolInputError(msg)
         # check if variant is valid
-        if not variant.startswith('NM_') and not variant.startswith('chr'):
-            msg = f'Given variant {variant} is invalid. Variant should start with "NM_" or "chr"'
+        if not variant.startswith('NM_'):
+            msg = f'Given variant {variant} is invalid. Variant should start with "NM_"'
             logger.exception(msg)
             raise exceptions.PrimertoolInputError(msg)
         else:
