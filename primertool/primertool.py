@@ -388,9 +388,10 @@ class VariantPrimerGenerator(PrimerGenerator):
                                                  self.kuerzel)
         elif mutation_position['is_in_exon'] and mutation_position['exon_len'] > self.max_insert:
             logger.info('Mutation is in an exon, but the exon length is bigger than the max insert size')
-            variant_primer = GenomicPositionPrimerGenerator(gene_info['chromosome'], mutation_position['mut_start'],
-                                                            mutation_position['mut_end'], self.genome_assembly,
-                                                            self.kuerzel)
+            raise exceptions.PrimertoolExonLengthError('Exon length is bigger than the max insert size')
+            # variant_primer = GenomicPositionPrimerGenerator(gene_info['chromosome'], mutation_position['mut_start'],
+            #                                                mutation_position['mut_end'], self.genome_assembly,
+            #                                                self.kuerzel)
         else:
             logger.info('Mutation is not in an exon')
             variant_primer = GenomicPositionPrimerGenerator(gene_info['chromosome'], mutation_position['mut_start'],
