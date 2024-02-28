@@ -12,3 +12,7 @@ class PrimertoolInputError(PrimertoolError):
 
 class PrimertoolMutalyzerError(PrimertoolError):
     pass
+
+
+class PrimertoolExonLengthError(PrimertoolError):
+    pass
