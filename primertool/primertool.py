@@ -11,6 +11,7 @@ from typing import Tuple
 from . import exceptions
 from . import functions
 from . import logger
+from .insilicopcr import InSilicoPCR
 
 logger = logger.init_logger(level=logger.logging.INFO)
 
@@ -25,6 +26,8 @@ class PrimerPair(object):
 
         self.chromosome = None
         self.ordertable = pd.DataFrame()
+        self.orderprimer_forwards = None
+        self.orderprimer_reverse = None
         self.primer_forwards = None
         self.primer_reverse = None
 
@@ -40,29 +43,39 @@ class ExonPrimerPair(PrimerPair):
         self.strand = gene_info['strand']
 
         self.exon_number = exon_number
-        self.primer_forwards, self.primer_reverse = self.get_order_primers()
+        self.orderprimer_forwards, self.orderprimer_reverse, self.primer_forwards, self.primer_reverse = self.get_order_primers()
+
+        # Check if primer pair is unique in the targeted chromosome (to avoid wrongful detection)
+        in_silico_pcr = InSilicoPCR(self.primer_forwards, self.primer_reverse, self.chromosome)
+        if not in_silico_pcr.has_unique_primers():
+            # TODO: either throw warning here or delete this ExonPrimerPair so it does not appear in the order list
+            print("primers are not unique")
 
         # create pandas DataFrame for order table
         self.ordertable = self.make_order_table()
 
-    def get_order_primers(self) -> Tuple[str, str]:
+    def get_order_primers(self) -> Tuple[str, str, str, str]:
         """ Returns the forward and reverse primers in Gene-E(Exonnumber)F;Sequence and Gene-E(Exonnumber)R;Sequence format for ordering. """
         exon_str = str(self.exon_number).zfill(2)
 
         if self.strand == '+':
-            primer_forwards = f'{self.gene_name}-E{exon_str}F;{self.primer_info["PRIMER_LEFT_0_SEQUENCE"]}'
-            primer_reverse = f'{self.gene_name}-E{exon_str}R;{self.primer_info["PRIMER_RIGHT_0_SEQUENCE"]}'
+            orderprimer_forwards = f'{self.gene_name}-E{exon_str}F;{self.primer_info["PRIMER_LEFT_0_SEQUENCE"]}'
+            orderprimer_reverse = f'{self.gene_name}-E{exon_str}R;{self.primer_info["PRIMER_RIGHT_0_SEQUENCE"]}'
+            primer_forwards = self.primer_info["PRIMER_LEFT_0_SEQUENCE"]
+            primer_reverse = self.primer_info["PRIMER_RIGHT_0_SEQUENCE"]
         else:
-            primer_forwards = f'{self.gene_name}-E{exon_str}F;{self.primer_info["PRIMER_RIGHT_0_SEQUENCE"]}'
-            primer_reverse = f'{self.gene_name}-E{exon_str}R;{self.primer_info["PRIMER_LEFT_0_SEQUENCE"]}'
-        return primer_forwards, primer_reverse
+            orderprimer_forwards = f'{self.gene_name}-E{exon_str}F;{self.primer_info["PRIMER_RIGHT_0_SEQUENCE"]}'
+            orderprimer_reverse = f'{self.gene_name}-E{exon_str}R;{self.primer_info["PRIMER_LEFT_0_SEQUENCE"]}'
+            primer_forwards = self.primer_info["PRIMER_RIGHT_0_SEQUENCE"]
+            primer_reverse = self.primer_info["PRIMER_LEFT_0_SEQUENCE"]
+        return orderprimer_forwards, orderprimer_reverse, primer_forwards, primer_reverse
 
     def make_order_table(self) -> pd.DataFrame:
         date = datetime.datetime.now().strftime("%d.%m.%Y")
         df_order_table = pd.DataFrame({
             'date': [date, date],
             'person': [None, None],
-            'primer': [self.primer_forwards, self.primer_reverse],
+            'primer': [self.orderprimer_forwards, self.orderprimer_reverse],
             'gene': [self.gene_info['name'], self.gene_info['name']],
             'nm_number': [self.nm_number, self.nm_number],
             'mt': [self.mt, self.mt],
@@ -78,23 +91,30 @@ class GenomicPositionPrimerPair(PrimerPair):
         self.chromosome = chromosome
         self.start = start
         self.end = end
-        self.primer_forwards, self.primer_reverse = self.get_order_primers()
+        self.orderprimer_forwards, self.orderprimer_reverse, self.primer_forwards, self.primer_reverse = self.get_order_primers()
+
+        in_silico_pcr = InSilicoPCR(self.primer_forwards, self.primer_reverse, self.chromosome)
+        if not in_silico_pcr.has_unique_primers():
+            # TODO: either throw warning here or delete this ExonPrimerPair so it does not appear in the order list
+            print("primers are not unique")
 
         # create pandas DataFrame for order table
         self.ordertable = self.make_order_table()
 
-    def get_order_primers(self) -> Tuple[str, str]:
-        """ Returns the forward and reverse primers in ChrStartF;Sequence and ChrStartR;Sequence format for ordering. """
-        primer_forwards = f'{self.chromosome}-{self.start}F;{self.primer_info["PRIMER_LEFT_0_SEQUENCE"]}'
-        primer_reverse = f'{self.chromosome}-{self.end}R;{self.primer_info["PRIMER_RIGHT_0_SEQUENCE"]}'
-        return primer_forwards, primer_reverse
+    def get_order_primers(self) -> Tuple[str, str, str, str]:
+        """ Returns the forward and reverse primers in ChrStartF;Sequence and ChrStartR;Sequence format for ordering."""
+        orderprimer_forwards = f'{self.chromosome}-{self.start}F;{self.primer_info["PRIMER_LEFT_0_SEQUENCE"]}'
+        orderprimer_reverse = f'{self.chromosome}-{self.end}R;{self.primer_info["PRIMER_RIGHT_0_SEQUENCE"]}'
+        primer_forwards = self.primer_info["PRIMER_LEFT_0_SEQUENCE"]
+        primer_reverse = self.primer_info["PRIMER_RIGHT_0_SEQUENCE"]
+        return orderprimer_forwards, orderprimer_reverse, primer_forwards, primer_reverse
 
     def make_order_table(self) -> pd.DataFrame:
         date = datetime.datetime.now().strftime("%d.%m.%Y")
         df_order_table = pd.DataFrame({
             'date': [date, date],
             'person': [None, None],
-            'primer': [self.primer_forwards, self.primer_reverse],
+            'primer': [self.orderprimer_forwards, self.orderprimer_reverse],
             'gene': [None, None],
             'nm_number': [None, None],
             'mt': [self.mt, self.mt],
