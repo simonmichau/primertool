@@ -221,23 +221,42 @@ class PrimerGenerator(object):
             pos_start, pos_end = sub_exon[0], sub_exon[1]
 
             primer_bases = 100
-            primers, target_size = self.design_primer(pos_start, pos_end, primer_bases)
-            while primers['PRIMER_PAIR_NUM_RETURNED'] == 0:
-                logger.debug(
-                    f'No primers <{primer_bases}primer bases around target position found yet, increasing allowed '
-                    f'distance from target position to {primer_bases + 100} primer bases')
+            primers_found = 0
+            target_size = 0
+            primers = None
+            while not primers_found and target_size <= self.max_insert:
+                # Design primers using primer3
+                primers, target_size = self.design_primer(pos_start, pos_end, primer_bases)
 
-                primer_bases = primer_bases + 100
-
-                if target_size <= self.max_insert:
-                    primers, target_size = self.design_primer(pos_start, pos_end, primer_bases)
-                else:
-                    # if target_size is bigger than max_insert: split into chunks and try for primers again?
-                    # new_positions = self.check_insert_size(pos_start + primer_bases, pos_end + primer_bases)
-                    # primers = self.iterate_positions(new_positions, self.chromosome)
-                    # logging.info('No primers found and target size größer max insert')
+                if target_size > self.max_insert:
+                    primers = None
                     logger.warning('Stopping search (target size > max insert). No primers were found.')
-                    break
+
+                # if target_size is bigger than max_insert: split into chunks and try for primers again?
+                # new_positions = self.check_insert_size(pos_start + primer_bases, pos_end + primer_bases)
+                # primers = self.iterate_positions(new_positions, self.chromosome)
+                # logging.info('No primers found and target size größer max insert')
+
+                # Filter out all primer pairs that are not uniquely binding
+                primers, invalid_flag = functions.filter_unique_primers(primers)
+
+                # If primers were found, but all of them are not unique
+                if invalid_flag:
+                    # update pos_start and pos_end for next iteration (a.k.a. widen the target)
+                    # note that the update size here is arbitrary
+                    pos_start = pos_start + 100
+                    pos_end = pos_end + 100
+                    # reset primer_bases to init value
+                    primer_bases = 0
+
+                # increment loop variables
+                primer_bases = primer_bases + 100
+                primers_found = primers['PRIMER_PAIR_NUM_RETURNED']
+
+                if not primers_found:  # log message if no primers were found
+                    msg = (f'No primers <{primer_bases}primer bases around target position found yet, increasing '
+                           f'allowed distance from target position to {primer_bases + 100} primer bases')
+                    logger.debug(msg)
 
             if not primers['PRIMER_PAIR_NUM_RETURNED'] == 0:
                 logger.debug(f'Primers found for position {pos_start}-{pos_end}.')
@@ -409,7 +428,7 @@ class VariantPrimerGenerator(PrimerGenerator):
                                                  self.kuerzel)
         elif mutation_position['is_in_exon'] and mutation_position['exon_len'] > self.max_insert:
             logger.info('Mutation is in an exon, but the exon length is bigger than the max insert size')
-            raise exceptions.PrimertoolExonLengthError('Exon length is bigger than the max insert size')
+            raise exceptions.PrimertoolExonLengthError('Exon length is bigger than the max insert size. ')
             # variant_primer = GenomicPositionPrimerGenerator(gene_info['chromosome'], mutation_position['mut_start'],
             #                                                mutation_position['mut_end'], self.genome_assembly,
             #                                                self.kuerzel)

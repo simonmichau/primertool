@@ -1,3 +1,4 @@
+from typing import Tuple
 import genomepy
 import re
 import hgvs.parser
@@ -10,6 +11,7 @@ from mysql.connector import errorcode
 import logging
 
 from . import exceptions
+from .insilicopcr import InSilicoPCR
 
 logger = logging.getLogger(__package__)
 
@@ -106,9 +108,9 @@ def calculate_targets(target_start: int, target_end: int, primer_bases: int) -> 
     """
     seq_start = target_start - primer_bases
     seq_end = target_end + primer_bases
-    target_base = target_start - seq_start
+    target_base = primer_bases
     target_length = target_end - target_start
-    size_range = [target_length, int(target_length + primer_bases / 2)]
+    size_range = [target_length, target_length + int(primer_bases / 2)]
 
     target_info = dict(target_start=target_start,
                        target_end=target_end,
@@ -230,7 +232,8 @@ def parse_mutation(mutation):
         hp = hgvs.parser.Parser()
         hgvs_mutation = hp.parse_hgvs_variant(mutation)
     except hgvs.exceptions.HGVSParseError as msg:
-        raise exceptions.PrimertoolInputError(f'Could not parse the input. There is a problem with the hgvs nomenclature: {msg}')
+        raise exceptions.PrimertoolInputError(
+            f'Could not parse the input. There is a problem with the hgvs nomenclature: {msg}')
     return hgvs_mutation
 
 
@@ -292,3 +295,78 @@ def find_sequence_positions(exon_starts, exon_ends, exon_count, strand, mutation
 
     return dict(exon_number=exon_number, mut_start=mut_start, mut_end=mut_end, mut_length=mut_end - mut_start,
                 is_in_exon=is_in_exon, exon_len=exon_len)
+
+
+def filter_unique_primers(primer3_dict: dict) -> Tuple[dict, bool]:
+    """
+    Check primer uniqueness and remove all primers with multiple binding sites, so that only the uniquely binding ones
+    remain.
+    Also returns a flag if all primers were invalid (i.e. not uniquely binding), but only if there was at least one
+    primer to begin with.
+    """
+    pre_filter_primer_count = primer3_dict['PRIMER_PAIR_NUM_RETURNED']
+
+    idx = 0
+    while idx < primer3_dict['PRIMER_PAIR_NUM_RETURNED']:  # iterate over all generated primers
+        forward_primer = primer3_dict[f'PRIMER_LEFT_{idx}_SEQUENCE']
+        reverse_primer = primer3_dict[f'PRIMER_RIGHT_{idx}_SEQUENCE']
+        if not InSilicoPCR(forward_primer, reverse_primer).is_uniquely_binding():
+            # delete primerpair with index idx from primers
+            primer3_dict = purge_primer_pair(primer3_dict, idx)  # TODO: test
+            # don't increment idx because primer idx was removed and replaced by primer idx+1
+        else:
+            idx = idx + 1
+
+    post_filter_primer_count = primer3_dict['PRIMER_PAIR_NUM_RETURNED']
+
+    # If >0 primers were found, but all were invalid (i.e. not uniquely binding), set flag
+    all_primers_invalid_flag = pre_filter_primer_count > 0 and post_filter_primer_count == 0
+
+    return primer3_dict, all_primers_invalid_flag
+
+
+def purge_primer_pair(primer3_dict: dict, index: int) -> dict:
+    """
+    Removes primer pair of given index from primer3_dict and updates the dictionary so that the remaining data stays
+    consistent. (I.e. reset indices so enumeration does not have gaps and update)
+    """
+    # Remove primerpair with given index (remove every item from the dict where the index appears in the key)
+    for key, value in primer3_dict:
+        if re.match(f'.*{index}.*', key):
+            del primer3_dict[key]
+
+    # Reduce index of all primers with larger index than the one we removed
+    for idx in range(index + 1, primer3_dict['PRIMER_PAIR_NUM_RETURNED']):
+        for key, value in primer3_dict:
+            # if the corresponding index is found
+            if re.findall(str(idx), key):
+                # Rename keys
+                new_key = reduce_numbers_in_string(key)
+                primer3_dict[new_key] = primer3_dict.pop(key)
+
+    # Count down number of returned primers
+    primer3_dict['PRIMER_LEFT_NUM_RETURNED'] -= 1
+    primer3_dict['PRIMER_RIGHT_NUM_RETURNED'] -= 1
+    primer3_dict['PRIMER_PAIR_NUM_RETURNED'] -= 1
+
+    return primer3_dict
+
+
+def reduce_numbers_in_string(input_string: str) -> str:
+    """
+    Takes an input string and reduces any (positive) integer in it by one.
+    """
+    # Define a regex pattern to match numbers
+    pattern = r"\d+"
+
+    # Find all occurrences of the pattern in the input string
+    matches = re.findall(pattern, input_string)
+
+    # Decrement each matched number by 1
+    decremented_values = [str(int(match) - 1) for match in matches]
+
+    # Replace the original numbers with the decremented values
+    for i, match in enumerate(matches):
+        input_string = input_string.replace(match, decremented_values[i], 1)
+
+    return input_string
