@@ -20,7 +20,7 @@ st.sidebar.markdown("# Primertool")
 
 st.markdown('---')
 
-kuerzel = st.text_input(label='', placeholder='Initials', help='Enter your initials (e.g. "XY")')
+kuerzel = st.text_input(label='Initials', placeholder='Initials', help='Enter your initials (e.g. "XY")')
 genome_assembly = st.selectbox('Genome assembly', ('hg38', 'hg19'), index=0, help='Select genome assembly')
 generator = st.selectbox('Generate from:', ('Variant', 'Exon', 'Gene', 'Genomic Position'),
                          help='Select what input you want to use to generate primers')
@@ -29,7 +29,7 @@ st.markdown('---')
 
 if generator == 'Variant':
     st.subheader("VariantPrimerGenerator")
-    hgvs_variant = st.text_input(label='', placeholder='HGVS variant',
+    hgvs_variant = st.text_input(label='Variant', placeholder='HGVS variant',
                                  help='Enter variant in HGVS notation (e.g. "NM_000410.3:c.845G>A")')
 
     if genome_assembly and hgvs_variant:

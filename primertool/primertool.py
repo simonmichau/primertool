@@ -45,12 +45,6 @@ class ExonPrimerPair(PrimerPair):
         self.exon_number = exon_number
         self.orderprimer_forwards, self.orderprimer_reverse, self.primer_forwards, self.primer_reverse = self.get_order_primers()
 
-        # Check if primer pair is unique in the targeted chromosome (to avoid wrongful detection)
-        in_silico_pcr = InSilicoPCR(self.primer_forwards, self.primer_reverse)
-        if not in_silico_pcr.is_uniquely_binding():
-            # TODO: either throw warning here or delete this ExonPrimerPair so it does not appear in the order list
-            print("primers are not unique")
-
         # create pandas DataFrame for order table
         self.ordertable = self.make_order_table()
 
@@ -92,11 +86,6 @@ class GenomicPositionPrimerPair(PrimerPair):
         self.start = start
         self.end = end
         self.orderprimer_forwards, self.orderprimer_reverse, self.primer_forwards, self.primer_reverse = self.get_order_primers()
-
-        in_silico_pcr = InSilicoPCR(self.primer_forwards, self.primer_reverse)
-        if not in_silico_pcr.is_uniquely_binding():
-            # TODO: either throw warning here or delete this ExonPrimerPair so it does not appear in the order list
-            print("primers are not unique")
 
         # create pandas DataFrame for order table
         self.ordertable = self.make_order_table()
@@ -231,6 +220,7 @@ class PrimerGenerator(object):
                 if target_size > self.max_insert:
                     primers = None
                     logger.warning('Stopping search (target size > max insert). No primers were found.')
+                    break
 
                 # if target_size is bigger than max_insert: split into chunks and try for primers again?
                 # new_positions = self.check_insert_size(pos_start + primer_bases, pos_end + primer_bases)
@@ -484,7 +474,7 @@ class VariantPrimerGenerator(PrimerGenerator):
             logger.info(response['infos'][0]['details'])
             coding_mutation.ac = response['corrected_model']['reference']['id']
 
-        if coding_mutation.type is not 'c':
+        if coding_mutation.type != 'c':
             logger.warning(f'The input mutation is valid but not in coding reference!')
             raise exceptions.PrimertoolInputError('Input is not in coding reference!')
 

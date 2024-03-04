@@ -1,139 +1,105 @@
-altair==4.1.0
+altair==5.2.0
 appdirs==1.4.4
-argon2-cffi @ file:///tmp/build/80754af9/argon2-cffi_1613037492802/work
-async-generator==1.10
-attrs==22.2.0
-backcall @ file:///home/ktietz/src/ci/backcall_1611930011877/work
+asttokens==2.4.1
+attrs==23.2.0
+backcall==0.2.0
 backports.zoneinfo==0.2.1
-beautifulsoup4==4.12.2
+beautifulsoup4==4.12.3
 biocommons.seqrepo==0.6.5
-biopython==1.79
-bioutils==0.5.7
-bleach @ file:///opt/conda/conda-bld/bleach_1641577558959/work
-blinker==1.5
-boltons==23.1.1
-bs4==0.0.1
-BucketCache==0.12.1
-cached-property==1.5.2
-cachetools==4.2.4
-certifi==2021.5.30
-cffi @ file:///tmp/build/80754af9/cffi_1625814693874/work
-charset-normalizer==2.0.12
-click==8.0.4
-colorama==0.4.5
+biopython==1.83
+biothings-client==0.3.1
+bioutils==0.5.8.post1
+blinker==1.7.0
+bs4==0.0.2
+cachetools==5.3.3
+certifi==2024.2.2
+charset-normalizer==3.3.2
+click==8.1.7
+colorama==0.4.6
 coloredlogs==15.0.1
-commonmark==0.9.1
-configparser==5.2.0
-cssselect==1.1.0
-dataclasses==0.8
-decorator @ file:///opt/conda/conda-bld/decorator_1643638310831/work
-defusedxml @ file:///tmp/build/80754af9/defusedxml_1615228127516/work
-entrypoints==0.3
+configparser==6.0.1
+cssselect==1.2.0
+decorator==5.1.1
+diskcache==5.6.3
+executing==2.0.1
 fake-useragent==1.4.0
-genomepy==0.9.3
-gitdb==4.0.9
-GitPython==3.1.18
+filelock==3.13.1
+genomepy==0.16.1
+gitdb==4.0.11
+GitPython==3.1.42
 hgvs==1.5.1
 humanfriendly==10.0
 idna==3.6
-importlib-metadata==4.8.3
-importlib-resources==5.4.0
-ipykernel @ file:///tmp/build/80754af9/ipykernel_1596206602906/work/dist/ipykernel-5.3.4-py3-none-any.whl
-ipython==7.16.3
-ipython-genutils @ file:///tmp/build/80754af9/ipython_genutils_1606773439826/work
-ipywidgets @ file:///croot/ipywidgets_1701289330913/work
-isodate==0.6.1
-jedi==0.17.2
-Jinja2 @ file:///opt/conda/conda-bld/jinja2_1647436528585/work
-jsonschema==3.0.2
-jupyter==1.0.0
-jupyter-client @ file:///opt/conda/conda-bld/jupyter_client_1643638337975/work
-jupyter-console @ file:///opt/conda/conda-bld/jupyter_console_1647002188872/work
-jupyter-core @ file:///tmp/build/80754af9/jupyter_core_1633420100582/work
-jupyterlab-pygments @ file:///tmp/build/80754af9/jupyterlab_pygments_1601490720602/work
-jupyterlab-widgets @ file:///tmp/build/80754af9/jupyterlab_widgets_1609884341231/work
-Logbook==1.5.3
-lxml==5.0.0
-MarkupSafe @ file:///tmp/build/80754af9/markupsafe_1621528150516/work
-mistune==0.8.4
-mkl-fft==1.3.0
-mkl-random==1.1.1
-mkl-service==2.3.0
-mysql-connector==2.2.9
-nbclient @ file:///tmp/build/80754af9/nbclient_1614364831625/work
-nbconvert @ file:///tmp/build/80754af9/nbconvert_1601914804165/work
-nbformat @ file:///tmp/build/80754af9/nbformat_1617383369282/work
-nest-asyncio @ file:///tmp/build/80754af9/nest-asyncio_1613680548246/work
+importlib-metadata==7.0.1
+importlib_resources==6.1.2
+ipython==8.12.3
+jedi==0.19.1
+Jinja2==3.1.3
+jsonschema==4.21.1
+jsonschema-specifications==2023.12.1
+loguru==0.7.2
+lxml==5.1.0
+markdown-it-py==3.0.0
+MarkupSafe==2.1.5
+matplotlib-inline==0.1.6
+mdurl==0.1.2
+mygene==3.2.2
+mysql-connector-python==8.3.0
 norns==0.1.6
 nose==1.3.7
-notebook @ file:///tmp/build/80754af9/notebook_1629197205351/work
-numpy==1.19.5
-packaging @ file:///tmp/build/80754af9/packaging_1637314298585/work
-pandas==1.1.5
-pandocfilters @ file:///opt/conda/conda-bld/pandocfilters_1643405455980/work
-parse==1.20.0
+numpy==1.24.4
+packaging==23.2
+pandas==2.0.3
+parse==1.20.1
 Parsley==1.3
-parso==0.7.1
+parso==0.8.3
 pexpect==4.9.0
-pickleshare @ file:///tmp/build/80754af9/pickleshare_1606932040724/work
-Pillow==8.4.0
-primer3-py==0.6.1
-primertool @ file:///media/simon/Data/Documents/work/primertool
-prometheus-client @ file:///opt/conda/conda-bld/prometheus_client_1643788673601/work
-prompt-toolkit==3.0.36
-protobuf==3.19.6
-psycopg2-binary==2.9.5
-ptyprocess @ file:///tmp/build/80754af9/ptyprocess_1609355006118/work/dist/ptyprocess-0.7.0-py2.py3-none-any.whl
-pyarrow==6.0.1
-pycparser @ file:///tmp/build/80754af9/pycparser_1636541352034/work
-pydeck==0.6.2
-pyee==8.2.2
-pyfaidx==0.7.1
-Pygments==2.14.0
-Pympler==1.0.1
-pyparsing @ file:///tmp/build/80754af9/pyparsing_1635766073266/work
-pyppeteer==0.2.6
-pyquery==1.4.3
-pyrsistent @ file:///tmp/build/80754af9/pyrsistent_1600141725711/work
+pickleshare==0.7.5
+pillow==10.2.0
+pkgutil_resolve_name==1.3.10
+primer3-py==2.0.3
+prompt-toolkit==3.0.43
+protobuf==4.25.3
+psycopg2-binary==2.9.9
+ptyprocess==0.7.0
+pure-eval==0.2.2
+pyarrow==15.0.0
+pydeck==0.8.1b0
+pyee==11.1.0
+pyfaidx==0.8.1.1
+Pygments==2.17.2
+pyppeteer==2.0.0
+pyquery==2.0.0
 pysam==0.22.0
-python-dateutil @ file:///tmp/build/80754af9/python-dateutil_1626374649649/work
-pytz==2023.3.post1
-pytz-deprecation-shim==0.1.0.post0
+python-dateutil==2.9.0.post0
+pytz==2024.1
 PyYAML==6.0.1
-pyzmq @ file:///tmp/build/80754af9/pyzmq_1628268400816/work
-qtconsole @ file:///opt/conda/conda-bld/qtconsole_1643819126524/work
-QtPy @ file:///opt/conda/conda-bld/qtpy_1649073884068/work
-Represent==1.6.0.post0
-requests==2.27.1
+referencing==0.33.0
+requests==2.31.0
 requests-html==0.10.0
-requests-toolbelt==1.0.0
-rich==12.6.0
-semver==2.13.0
-Send2Trash @ file:///tmp/build/80754af9/send2trash_1632406701022/work
-six @ file:///tmp/build/80754af9/six_1644875935023/work
-smmap==5.0.0
-soupsieve==2.3.2.post1
+rich==13.7.1
+rpds-py==0.18.0
+six==1.16.0
+smmap==5.0.1
+soupsieve==2.5
 sqlparse==0.4.4
-streamlit==1.10.0
-tabulate==0.8.10
-terminado==0.9.4
-testpath @ file:///tmp/build/80754af9/testpath_1624638946665/work
+stack-data==0.6.3
+streamlit==1.31.1
+tabulate==0.9.0
+tenacity==8.2.3
 toml==0.10.2
-toolz==0.12.0
-tornado @ file:///tmp/build/80754af9/tornado_1606942266872/work
-tqdm==4.64.1
-traitlets @ file:///tmp/build/80754af9/traitlets_1632746497744/work
-typing_extensions==4.1.1
+toolz==0.12.1
+tornado==6.4
+tqdm==4.66.2
+traitlets==5.14.1
+typing_extensions==4.10.0
 tzdata==2024.1
-tzlocal==4.2
+tzlocal==5.2
 urllib3==1.26.18
-validators==0.20.0
-w3lib==2.0.1
-watchdog==2.3.1
-wcwidth==0.2.12
-webencodings==0.5.1
-websockets==9.1
-widgetsnbextension==3.5.1
+validators==0.22.0
+w3lib==2.1.2
+watchdog==4.0.0
+wcwidth==0.2.13
+websockets==10.4
 yoyo-migrations==8.2.0
-zeep==3.4.0
-zipp==3.6.0
+zipp==3.17.0

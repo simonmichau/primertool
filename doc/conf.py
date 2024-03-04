@@ -18,8 +18,8 @@
 # -- Project information -----------------------------------------------------
 
 project = 'Primertool'
-copyright = '2021, Daniela Dey, Carlos Classen'
-author = 'Daniela Dey, Carlos Classen'
+copyright = '2021, Daniela Dey, Carlos Classen, Simon Michau'
+author = 'Daniela Dey, Carlos Classen, Simon Michau'
 
 # The full version, including alpha/beta/rc tags
 release = '0.1'
